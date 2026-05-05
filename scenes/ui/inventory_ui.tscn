@@ -94,6 +94,31 @@ layout_mode = 2
 text = "Персонаж: Player"
 vertical_alignment = 1
 
+[node name="StatsTitle" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
+custom_minimum_size = Vector2(268, 28)
+layout_mode = 2
+text = "Статы"
+theme_override_font_sizes/font_size = 18
+vertical_alignment = 1
+
+[node name="HpLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
+custom_minimum_size = Vector2(268, 24)
+layout_mode = 2
+text = "HP: 100/100"
+vertical_alignment = 1
+
+[node name="AttackLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
+custom_minimum_size = Vector2(268, 24)
+layout_mode = 2
+text = "Атака: 10"
+vertical_alignment = 1
+
+[node name="DefenseLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
+custom_minimum_size = Vector2(268, 24)
+layout_mode = 2
+text = "Защита: 2"
+vertical_alignment = 1
+
 [node name="EquipmentSlots" type="GridContainer" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
 layout_mode = 2
 columns = 2
@@ -265,3 +290,4 @@ layout_mode = 2
 text = "Пока нет пассивных способностей"
 horizontal_alignment = 1
 vertical_alignment = 1
+autowrap_mode = 2
