@@ -12,10 +12,20 @@ var walls_container: Node2D
 var enemies_container: Node2D
 
 @onready var player = $Player
+@onready var inventory_ui = $UI/InventoryUI
 
 func _ready():
+	inventory_ui.inventory_toggled.connect(_on_inventory_toggled)
 	GameState.ensure_level_data()
 	build_level()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("inventory"):
+		inventory_ui.toggle()
+		get_viewport().set_input_as_handled()
+
+func _on_inventory_toggled(is_open: bool) -> void:
+	player.input_locked = is_open
 
 func build_level() -> void:
 	floor_positions.clear()

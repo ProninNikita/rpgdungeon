@@ -10,6 +10,7 @@ The project uses semantic versioning while it is in prototype stage:
 
 ### Added
 - Reworked dungeon generation to create connected rooms and corridors.
+- Added a character inventory window with equipment, 16 inventory slots, and a passive abilities tab.
 
 ## [0.1.1] - 2026-05-05
 
