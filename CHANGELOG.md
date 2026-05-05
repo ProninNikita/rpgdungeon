@@ -6,7 +6,7 @@ The project uses semantic versioning while it is in prototype stage:
 - `0.x.0` for new gameplay systems or visible feature groups.
 - `0.x.y` for fixes and small improvements.
 
-## [Unreleased]
+## [0.1.1] - 2026-05-05
 
 ### Added
 - Added a main menu with New Game, Load, and Exit actions.
