@@ -1,0 +1,136 @@
+[gd_scene load_steps=2 format=3 uid="uid://dnbkgeajxtoa8"]
+
+[ext_resource type="Script" path="res://scripts/load_menu.gd" id="1_load_menu"]
+
+[node name="LoadMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_load_menu")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.12, 1)
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 112.0
+offset_top = 90.0
+offset_right = 912.0
+offset_bottom = 620.0
+theme_override_constants/separation = 24
+
+[node name="Title" type="Label" parent="Content"]
+custom_minimum_size = Vector2(800, 64)
+layout_mode = 2
+text = "Загрузить игру"
+theme_override_font_sizes/font_size = 40
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Slots" type="VBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Slot1" type="HBoxContainer" parent="Content/Slots"]
+custom_minimum_size = Vector2(800, 82)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Content/Slots/Slot1"]
+custom_minimum_size = Vector2(90, 82)
+layout_mode = 2
+text = "Slot 1"
+theme_override_font_sizes/font_size = 20
+vertical_alignment = 1
+
+[node name="Description" type="Label" parent="Content/Slots/Slot1"]
+custom_minimum_size = Vector2(430, 82)
+layout_mode = 2
+text = "Empty"
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="LoadButton" type="Button" parent="Content/Slots/Slot1"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Загрузить"
+
+[node name="DeleteButton" type="Button" parent="Content/Slots/Slot1"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Удалить"
+
+[node name="Slot2" type="HBoxContainer" parent="Content/Slots"]
+custom_minimum_size = Vector2(800, 82)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Content/Slots/Slot2"]
+custom_minimum_size = Vector2(90, 82)
+layout_mode = 2
+text = "Slot 2"
+theme_override_font_sizes/font_size = 20
+vertical_alignment = 1
+
+[node name="Description" type="Label" parent="Content/Slots/Slot2"]
+custom_minimum_size = Vector2(430, 82)
+layout_mode = 2
+text = "Empty"
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="LoadButton" type="Button" parent="Content/Slots/Slot2"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Загрузить"
+
+[node name="DeleteButton" type="Button" parent="Content/Slots/Slot2"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Удалить"
+
+[node name="Slot3" type="HBoxContainer" parent="Content/Slots"]
+custom_minimum_size = Vector2(800, 82)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Content/Slots/Slot3"]
+custom_minimum_size = Vector2(90, 82)
+layout_mode = 2
+text = "Slot 3"
+theme_override_font_sizes/font_size = 20
+vertical_alignment = 1
+
+[node name="Description" type="Label" parent="Content/Slots/Slot3"]
+custom_minimum_size = Vector2(430, 82)
+layout_mode = 2
+text = "Empty"
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="LoadButton" type="Button" parent="Content/Slots/Slot3"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Загрузить"
+
+[node name="DeleteButton" type="Button" parent="Content/Slots/Slot3"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Удалить"
+
+[node name="BackButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 184.0
+offset_bottom = 66.0
+text = "Назад"

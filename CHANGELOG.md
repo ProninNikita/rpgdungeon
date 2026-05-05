@@ -6,6 +6,14 @@ The project uses semantic versioning while it is in prototype stage:
 - `0.x.0` for new gameplay systems or visible feature groups.
 - `0.x.y` for fixes and small improvements.
 
+## [Unreleased]
+
+### Added
+- Added a main menu with New Game, Load, and Exit actions.
+- Added a character selection screen with the base character.
+- Added a load menu with three save slots and delete actions.
+- Added basic save slot creation and loading through `GameState`.
+
 ## [0.1.0] - 2026-05-05
 
 ### Added

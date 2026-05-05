@@ -1,0 +1,61 @@
+[gd_scene load_steps=2 format=3 uid="uid://b60y23biu5tx8"]
+
+[ext_resource type="Script" path="res://scripts/character_select.gd" id="1_character_select"]
+
+[node name="CharacterSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_character_select")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.12, 1)
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 232.0
+offset_top = 110.0
+offset_right = 792.0
+offset_bottom = 520.0
+theme_override_constants/separation = 24
+
+[node name="Title" type="Label" parent="Content"]
+custom_minimum_size = Vector2(560, 64)
+layout_mode = 2
+text = "Выбор персонажа"
+theme_override_font_sizes/font_size = 40
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CharacterList" type="VBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="BaseCharacterButton" type="Button" parent="Content/CharacterList"]
+custom_minimum_size = Vector2(560, 96)
+layout_mode = 2
+text = "Базовый персонаж"
+
+[node name="Hint" type="Label" parent="Content"]
+custom_minimum_size = Vector2(560, 40)
+layout_mode = 2
+text = "Стартовый герой для тестовой комнаты"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BackButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 184.0
+offset_bottom = 66.0
+text = "Назад"
