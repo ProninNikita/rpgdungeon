@@ -41,6 +41,7 @@ func move_to_grid(new_grid_pos: Vector2i):
 	# Проверяем столкновения и границы
 	if is_valid_position(new_grid_pos):
 		set_grid_position(new_grid_pos)
+		GameState.set_player_grid_position(grid_pos, true)
 		
 		# Проверяем встречу с врагом
 		check_for_encounter()
@@ -70,6 +71,7 @@ func start_battle(enemy):
 	if input_locked:
 		return
 	input_locked = true
+	GameState.set_player_grid_position(grid_pos, true)
 	GameState.start_battle(enemy.enemy_id)
 	await get_tree().create_timer(0.3).timeout
 	get_tree().change_scene_to_file("res://scenes/combat/battle.tscn")

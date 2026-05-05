@@ -30,9 +30,8 @@ func build_level() -> void:
 	spawn_enemies()
 
 func place_player() -> void:
-	var start_position = GameState.level_data.get("start_position", {"x": 8, "y": 8})
 	if player != null and player.has_method("set_grid_position"):
-		player.set_grid_position(Vector2i(start_position["x"], start_position["y"]))
+		player.set_grid_position(GameState.get_player_grid_position())
 
 func build_walls() -> void:
 	for wall_data in GameState.level_data.get("walls", []):

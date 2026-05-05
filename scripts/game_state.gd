@@ -11,6 +11,8 @@ const START_GRID_POS = {"x": 8, "y": 8}
 var active_save_slot: int = 0
 var selected_character_id: String = "base"
 var level_data: Dictionary = {}
+var player_grid_pos: Dictionary = START_GRID_POS.duplicate()
+var player_stats: Dictionary = get_default_player_stats()
 var current_enemy_id: String = ""
 var defeated_enemies: Dictionary = {}
 
@@ -19,6 +21,8 @@ func start_new_game(character_id: String) -> void:
 	current_enemy_id = ""
 	defeated_enemies.clear()
 	level_data = generate_level_data()
+	player_grid_pos = START_GRID_POS.duplicate()
+	player_stats = get_default_player_stats()
 	active_save_slot = get_first_empty_save_slot()
 	if active_save_slot != 0:
 		save_current_game()
@@ -33,6 +37,8 @@ func load_game(slot: int) -> bool:
 	level_data = save_data.get("level_data", {})
 	if level_data.is_empty():
 		level_data = generate_level_data()
+	player_grid_pos = save_data.get("player_grid_pos", START_GRID_POS.duplicate())
+	player_stats = save_data.get("player_stats", get_default_player_stats())
 	current_enemy_id = ""
 	defeated_enemies = save_data.get("defeated_enemies", {})
 	return true
@@ -45,6 +51,8 @@ func save_current_game() -> void:
 		"version": "0.1.0",
 		"selected_character_id": selected_character_id,
 		"level_data": level_data,
+		"player_grid_pos": player_grid_pos,
+		"player_stats": player_stats,
 		"defeated_enemies": defeated_enemies,
 		"updated_at": Time.get_datetime_string_from_system(false, true)
 	}
@@ -95,6 +103,39 @@ func get_save_file_name(slot: int) -> String:
 func ensure_level_data() -> void:
 	if level_data.is_empty():
 		level_data = generate_level_data()
+
+func get_default_player_stats() -> Dictionary:
+	return {
+		"hp": 100,
+		"max_hp": 100,
+		"attack": 10,
+		"defense": 2,
+		"name": "Player"
+	}
+
+func get_player_grid_position() -> Vector2i:
+	return Vector2i(int(player_grid_pos.get("x", START_GRID_POS["x"])), int(player_grid_pos.get("y", START_GRID_POS["y"])))
+
+func set_player_grid_position(grid_pos: Vector2i, should_save: bool = false) -> void:
+	player_grid_pos = {"x": grid_pos.x, "y": grid_pos.y}
+	if should_save:
+		save_current_game()
+
+func get_player_battle_stats() -> Dictionary:
+	var stats = get_default_player_stats()
+	stats.merge(player_stats, true)
+	return stats
+
+func set_player_battle_stats(stats: Dictionary, should_save: bool = false) -> void:
+	player_stats = {
+		"hp": int(stats.get("hp", 100)),
+		"max_hp": int(stats.get("max_hp", 100)),
+		"attack": int(stats.get("attack", 10)),
+		"defense": int(stats.get("defense", 2)),
+		"name": str(stats.get("name", "Player"))
+	}
+	if should_save:
+		save_current_game()
 
 func generate_level_data() -> Dictionary:
 	var rng = RandomNumberGenerator.new()

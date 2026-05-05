@@ -15,13 +15,7 @@ var battle_log: Array = []
 const ATTACK_SPEED = 1.5
 
 func _ready():
-	player_stats = {
-		"hp": 100,
-		"max_hp": 100,
-		"attack": 10,
-		"defense": 2,
-		"name": "Player"
-	}
+	player_stats = GameState.get_player_battle_stats()
 	
 	enemy_stats = {
 		"hp": 30,
@@ -50,7 +44,7 @@ func battle_loop():
 
 func player_attack():
 	var damage = calculate_damage(player_stats["attack"], enemy_stats["defense"])
-	enemy_stats["hp"] -= damage
+	enemy_stats["hp"] = max(0, enemy_stats["hp"] - damage)
 	
 	add_log("Player attacks for %d damage!" % damage)
 	update_ui()
@@ -60,7 +54,7 @@ func player_attack():
 
 func enemy_attack():
 	var damage = calculate_damage(enemy_stats["attack"], player_stats["defense"])
-	player_stats["hp"] -= damage
+	player_stats["hp"] = max(0, player_stats["hp"] - damage)
 	
 	add_log("%s attacks for %d damage!" % [enemy_stats["name"], damage])
 	update_ui()
@@ -83,8 +77,8 @@ func update_log_display():
 	log_label.text = "\n".join(battle_log)
 
 func update_ui():
-	player_hp_label.text = "Player HP: %d/%d" % [player_stats["hp"], player_stats["max_hp"]]
-	enemy_hp_label.text = "%s HP: %d/%d" % [enemy_stats["name"], enemy_stats["hp"], enemy_stats["max_hp"]]
+	player_hp_label.text = "Player HP: %d/%d" % [int(player_stats["hp"]), int(player_stats["max_hp"])]
+	enemy_hp_label.text = "%s HP: %d/%d" % [enemy_stats["name"], int(enemy_stats["hp"]), int(enemy_stats["max_hp"])]
 	
 	var player_hp_percent = float(player_stats["hp"]) / player_stats["max_hp"]
 	var enemy_hp_percent = float(enemy_stats["hp"]) / enemy_stats["max_hp"]
@@ -94,6 +88,7 @@ func update_ui():
 
 func end_battle(result: String):
 	is_battle_active = false
+	GameState.set_player_battle_stats(player_stats)
 	
 	if result == "win":
 		result_label.text = "VICTORY!"
@@ -104,6 +99,7 @@ func end_battle(result: String):
 		result_label.text = "DEFEAT!"
 		result_label.modulate = Color.RED
 		add_log("Defeat! You lost!")
+		GameState.save_current_game()
 	
 	result_label.show()
 	
