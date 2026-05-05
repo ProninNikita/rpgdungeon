@@ -1,0 +1,17 @@
+# Godot editor cache and imported resources.
+.godot/
+.import/
+imported/
+
+# Exported builds.
+builds/
+exports/
+*.pck
+*.exe
+*.app
+*.x86_64
+*.arm64
+
+# OS/editor noise.
+.DS_Store
+Thumbs.db
