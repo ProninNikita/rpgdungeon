@@ -16,6 +16,10 @@ func _ready():
 	# Выравниваем позицию на сетку
 	position = grid_pos * TILE_SIZE
 
+func set_grid_position(new_grid_pos: Vector2i) -> void:
+	grid_pos = new_grid_pos
+	position = grid_pos * TILE_SIZE
+
 func _physics_process(_delta):
 	if input_locked:
 		return
@@ -42,6 +46,11 @@ func is_valid_position(pos: Vector2i) -> bool:
 	# Границы комнаты 16x16
 	if pos.x < 0 or pos.x >= 16 or pos.y < 0 or pos.y >= 16:
 		return false
+	
+	var room = get_parent()
+	if room != null and room.has_method("is_grid_position_blocked") and room.is_grid_position_blocked(pos):
+		return false
+	
 	return true
 
 func check_for_encounter():

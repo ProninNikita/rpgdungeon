@@ -2,9 +2,15 @@ extends Node
 
 const SAVE_SLOT_COUNT = 3
 const MAIN_LEVEL_PATH = "res://scenes/levels/main_level.tscn"
+const ROOM_WIDTH = 16
+const ROOM_HEIGHT = 16
+const WALL_COUNT = 20
+const ENEMY_COUNT = 3
+const START_GRID_POS = {"x": 8, "y": 8}
 
 var active_save_slot: int = 0
 var selected_character_id: String = "base"
+var level_data: Dictionary = {}
 var current_enemy_id: String = ""
 var defeated_enemies: Dictionary = {}
 
@@ -12,6 +18,7 @@ func start_new_game(character_id: String) -> void:
 	selected_character_id = character_id
 	current_enemy_id = ""
 	defeated_enemies.clear()
+	level_data = generate_level_data()
 	active_save_slot = get_first_empty_save_slot()
 	if active_save_slot != 0:
 		save_current_game()
@@ -23,6 +30,9 @@ func load_game(slot: int) -> bool:
 	
 	active_save_slot = slot
 	selected_character_id = save_data.get("selected_character_id", "base")
+	level_data = save_data.get("level_data", {})
+	if level_data.is_empty():
+		level_data = generate_level_data()
 	current_enemy_id = ""
 	defeated_enemies = save_data.get("defeated_enemies", {})
 	return true
@@ -34,6 +44,7 @@ func save_current_game() -> void:
 	var save_data = {
 		"version": "0.1.0",
 		"selected_character_id": selected_character_id,
+		"level_data": level_data,
 		"defeated_enemies": defeated_enemies,
 		"updated_at": Time.get_datetime_string_from_system(false, true)
 	}
@@ -60,7 +71,9 @@ func load_save_slot(slot: int) -> Dictionary:
 func delete_save_slot(slot: int) -> void:
 	if not save_slot_exists(slot):
 		return
-	DirAccess.remove_absolute(get_save_path(slot))
+	var save_dir = DirAccess.open("user://")
+	if save_dir != null:
+		save_dir.remove(get_save_file_name(slot))
 	if active_save_slot == slot:
 		active_save_slot = 0
 
@@ -74,7 +87,65 @@ func get_first_empty_save_slot() -> int:
 	return 0
 
 func get_save_path(slot: int) -> String:
-	return "user://save_slot_%d.json" % slot
+	return "user://%s" % get_save_file_name(slot)
+
+func get_save_file_name(slot: int) -> String:
+	return "save_slot_%d.json" % slot
+
+func ensure_level_data() -> void:
+	if level_data.is_empty():
+		level_data = generate_level_data()
+
+func generate_level_data() -> Dictionary:
+	var rng = RandomNumberGenerator.new()
+	rng.randomize()
+	var level_seed = rng.randi()
+	rng.seed = level_seed
+	
+	var occupied = {}
+	for y in range(START_GRID_POS["y"] - 1, START_GRID_POS["y"] + 2):
+		for x in range(START_GRID_POS["x"] - 1, START_GRID_POS["x"] + 2):
+			occupied[get_grid_key(x, y)] = true
+	
+	var walls = []
+	while walls.size() < WALL_COUNT:
+		var wall_pos = get_random_free_position(rng, occupied, 1)
+		walls.append(wall_pos)
+		occupied[get_grid_key(wall_pos["x"], wall_pos["y"])] = true
+	
+	var enemies = []
+	for index in range(ENEMY_COUNT):
+		var enemy_pos = get_random_free_position(rng, occupied, 3)
+		occupied[get_grid_key(enemy_pos["x"], enemy_pos["y"])] = true
+		enemies.append({
+			"id": "level_enemy_%02d" % [index + 1],
+			"name": "Goblin",
+			"x": enemy_pos["x"],
+			"y": enemy_pos["y"]
+		})
+	
+	return {
+		"seed": level_seed,
+		"width": ROOM_WIDTH,
+		"height": ROOM_HEIGHT,
+		"start_position": START_GRID_POS,
+		"walls": walls,
+		"enemies": enemies
+	}
+
+func get_random_free_position(rng: RandomNumberGenerator, occupied: Dictionary, min_distance_from_start: int) -> Dictionary:
+	for _attempt in range(500):
+		var x = rng.randi_range(1, ROOM_WIDTH - 2)
+		var y = rng.randi_range(1, ROOM_HEIGHT - 2)
+		var key = get_grid_key(x, y)
+		var distance = abs(x - START_GRID_POS["x"]) + abs(y - START_GRID_POS["y"])
+		if not occupied.has(key) and distance >= min_distance_from_start:
+			return {"x": x, "y": y}
+	
+	return {"x": START_GRID_POS["x"], "y": START_GRID_POS["y"]}
+
+func get_grid_key(x: int, y: int) -> String:
+	return "%d:%d" % [x, y]
 
 func start_battle(enemy_id: String) -> void:
 	current_enemy_id = enemy_id

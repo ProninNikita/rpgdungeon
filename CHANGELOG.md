@@ -13,6 +13,8 @@ The project uses semantic versioning while it is in prototype stage:
 - Added a character selection screen with the base character.
 - Added a load menu with three save slots and delete actions.
 - Added basic save slot creation and loading through `GameState`.
+- Added procedural level generation with random walls and multiple enemies.
+- Added saved level data so generated rooms can be restored from save slots.
 
 ## [0.1.0] - 2026-05-05
 

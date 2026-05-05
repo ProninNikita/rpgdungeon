@@ -1,8 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://c3rm12wky4hpn"]
+[gd_scene load_steps=3 format=3 uid="uid://c3rm12wky4hpn"]
 
 [ext_resource type="PackedScene" uid="uid://b1o50gftlywyv" path="res://scenes/player/player.tscn" id="1_7kvbp"]
 [ext_resource type="Script" path="res://scripts/room.gd" id="2_3vwqf"]
-[ext_resource type="PackedScene" uid="uid://c4v8y53vbkjyf" path="res://scenes/combat/enemy.tscn" id="3_m9kqh"]
 
 [node name="MainLevel" type="Node2D"]
 script = ExtResource("2_3vwqf")
@@ -17,7 +16,3 @@ position = Vector2(256, 256)
 
 [node name="Camera2D" type="Camera2D" parent="Player"]
 zoom = Vector2(1.5, 1.5)
-
-[node name="Enemy" parent="." instance=ExtResource("3_m9kqh")]
-position = Vector2(416, 256)
-enemy_id = "main_level_goblin_01"

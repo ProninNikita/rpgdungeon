@@ -3,9 +3,68 @@ extends Node2D
 const ROOM_WIDTH = 16
 const ROOM_HEIGHT = 16
 const TILE_SIZE = 32
+const ENEMY_SCENE = preload("res://scenes/combat/enemy.tscn")
+
+var wall_positions: Dictionary = {}
+var walls_container: Node2D
+var enemies_container: Node2D
+
+@onready var player = $Player
 
 func _ready():
-	pass
+	GameState.ensure_level_data()
+	build_level()
+
+func build_level() -> void:
+	wall_positions.clear()
+	walls_container = Node2D.new()
+	walls_container.name = "GeneratedWalls"
+	add_child(walls_container)
+	
+	enemies_container = Node2D.new()
+	enemies_container.name = "GeneratedEnemies"
+	add_child(enemies_container)
+	
+	place_player()
+	build_walls()
+	spawn_enemies()
+
+func place_player() -> void:
+	var start_position = GameState.level_data.get("start_position", {"x": 8, "y": 8})
+	if player != null and player.has_method("set_grid_position"):
+		player.set_grid_position(Vector2i(start_position["x"], start_position["y"]))
+
+func build_walls() -> void:
+	for wall_data in GameState.level_data.get("walls", []):
+		var grid_pos = Vector2i(wall_data["x"], wall_data["y"])
+		wall_positions[get_grid_key(grid_pos)] = true
+		
+		var wall = ColorRect.new()
+		wall.position = grid_pos * TILE_SIZE
+		wall.size = Vector2(TILE_SIZE, TILE_SIZE)
+		wall.color = Color(0.24, 0.24, 0.3, 1)
+		walls_container.add_child(wall)
+
+func spawn_enemies() -> void:
+	for enemy_data in GameState.level_data.get("enemies", []):
+		var enemy_id = enemy_data["id"]
+		if GameState.is_enemy_defeated(enemy_id):
+			continue
+		
+		var enemy = ENEMY_SCENE.instantiate()
+		var grid_pos = Vector2i(enemy_data["x"], enemy_data["y"])
+		enemy.name = "Enemy_%s" % enemy_id
+		enemy.enemy_id = enemy_id
+		enemy.grid_pos = grid_pos
+		enemy.name_label = enemy_data.get("name", "Goblin")
+		enemy.position = grid_pos * TILE_SIZE
+		enemies_container.add_child(enemy)
+
+func is_grid_position_blocked(grid_pos: Vector2i) -> bool:
+	return wall_positions.has(get_grid_key(grid_pos))
+
+func get_grid_key(grid_pos: Vector2i) -> String:
+	return "%d:%d" % [grid_pos.x, grid_pos.y]
 
 func _draw():
 	# Вертикальные линии
