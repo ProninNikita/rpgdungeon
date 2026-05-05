@@ -188,8 +188,9 @@ func get_random_free_position(rng: RandomNumberGenerator, occupied: Dictionary, 
 func get_grid_key(x: int, y: int) -> String:
 	return "%d:%d" % [x, y]
 
-func start_battle(enemy_id: String) -> void:
+func start_battle(enemy_id: String, return_grid_pos: Vector2i) -> void:
 	current_enemy_id = enemy_id
+	set_player_grid_position(return_grid_pos, true)
 
 func mark_current_enemy_defeated() -> void:
 	if current_enemy_id.is_empty():

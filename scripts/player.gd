@@ -71,8 +71,7 @@ func start_battle(enemy):
 	if input_locked:
 		return
 	input_locked = true
-	GameState.set_player_grid_position(grid_pos, true)
-	GameState.start_battle(enemy.enemy_id)
+	GameState.start_battle(enemy.enemy_id, grid_pos)
 	await get_tree().create_timer(0.3).timeout
 	get_tree().change_scene_to_file("res://scenes/combat/battle.tscn")
 
