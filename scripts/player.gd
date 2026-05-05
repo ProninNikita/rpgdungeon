@@ -2,6 +2,7 @@ extends CharacterBody2D
 
 const TILE_SIZE = 32
 const SPEED = 200
+const HALF_TILE = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 
 var grid_pos: Vector2i = Vector2i(8, 8)
 var input_locked: bool = false
@@ -14,11 +15,14 @@ var defense: int = 2
 
 func _ready():
 	# Выравниваем позицию на сетку
-	position = grid_pos * TILE_SIZE
+	set_grid_position(grid_pos)
 
 func set_grid_position(new_grid_pos: Vector2i) -> void:
 	grid_pos = new_grid_pos
-	position = grid_pos * TILE_SIZE
+	position = grid_to_world_position(grid_pos)
+
+func grid_to_world_position(pos: Vector2i) -> Vector2:
+	return Vector2(pos) * TILE_SIZE + HALF_TILE
 
 func _physics_process(_delta):
 	if input_locked:
@@ -36,8 +40,7 @@ func _physics_process(_delta):
 func move_to_grid(new_grid_pos: Vector2i):
 	# Проверяем столкновения и границы
 	if is_valid_position(new_grid_pos):
-		grid_pos = new_grid_pos
-		position = grid_pos * TILE_SIZE
+		set_grid_position(new_grid_pos)
 		
 		# Проверяем встречу с врагом
 		check_for_encounter()

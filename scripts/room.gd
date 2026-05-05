@@ -57,7 +57,6 @@ func spawn_enemies() -> void:
 		enemy.enemy_id = enemy_id
 		enemy.grid_pos = grid_pos
 		enemy.name_label = enemy_data.get("name", "Goblin")
-		enemy.position = grid_pos * TILE_SIZE
 		enemies_container.add_child(enemy)
 
 func is_grid_position_blocked(grid_pos: Vector2i) -> bool:
