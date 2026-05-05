@@ -7,6 +7,30 @@ const ROOM_HEIGHT = 16
 const WALL_COUNT = 20
 const ENEMY_COUNT = 3
 const START_GRID_POS = {"x": 8, "y": 8}
+const CHARACTER_DEFINITIONS = {
+	"base": {
+		"name": "Player",
+		"hp": 100,
+		"max_hp": 100,
+		"attack": 10,
+		"defense": 2,
+		"passives": []
+	},
+	"vampire": {
+		"name": "Vampire",
+		"hp": 90,
+		"max_hp": 90,
+		"attack": 11,
+		"defense": 1,
+		"passives": [
+			{
+				"id": "vampirism",
+				"name": "Vampirism",
+				"heal_percent": 0.05
+			}
+		]
+	}
+}
 
 var active_save_slot: int = 0
 var selected_character_id: String = "base"
@@ -22,7 +46,7 @@ func start_new_game(character_id: String) -> void:
 	defeated_enemies.clear()
 	level_data = generate_level_data()
 	player_grid_pos = START_GRID_POS.duplicate()
-	player_stats = get_default_player_stats()
+	player_stats = get_character_stats(character_id)
 	active_save_slot = get_first_empty_save_slot()
 	if active_save_slot != 0:
 		save_current_game()
@@ -105,12 +129,17 @@ func ensure_level_data() -> void:
 		level_data = generate_level_data()
 
 func get_default_player_stats() -> Dictionary:
+	return get_character_stats("base")
+
+func get_character_stats(character_id: String) -> Dictionary:
+	var definition = CHARACTER_DEFINITIONS.get(character_id, CHARACTER_DEFINITIONS["base"])
 	return {
-		"hp": 100,
-		"max_hp": 100,
-		"attack": 10,
-		"defense": 2,
-		"name": "Player"
+		"hp": int(definition["hp"]),
+		"max_hp": int(definition["max_hp"]),
+		"attack": int(definition["attack"]),
+		"defense": int(definition["defense"]),
+		"name": str(definition["name"]),
+		"passives": definition.get("passives", []).duplicate(true)
 	}
 
 func get_player_grid_position() -> Vector2i:
@@ -132,7 +161,8 @@ func set_player_battle_stats(stats: Dictionary, should_save: bool = false) -> vo
 		"max_hp": int(stats.get("max_hp", 100)),
 		"attack": int(stats.get("attack", 10)),
 		"defense": int(stats.get("defense", 2)),
-		"name": str(stats.get("name", "Player"))
+		"name": str(stats.get("name", "Player")),
+		"passives": stats.get("passives", []).duplicate(true)
 	}
 	if should_save:
 		save_current_game()

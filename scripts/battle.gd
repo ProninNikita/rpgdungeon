@@ -46,11 +46,29 @@ func player_attack():
 	var damage = calculate_damage(player_stats["attack"], enemy_stats["defense"])
 	enemy_stats["hp"] = max(0, enemy_stats["hp"] - damage)
 	
-	add_log("Player attacks for %d damage!" % damage)
+	add_log("%s attacks for %d damage!" % [player_stats["name"], damage])
+	apply_attack_passives(damage)
 	update_ui()
 	
 	if enemy_stats["hp"] <= 0:
 		end_battle("win")
+
+func apply_attack_passives(damage: int) -> void:
+	for passive in player_stats.get("passives", []):
+		if passive.get("id", "") == "vampirism":
+			apply_vampirism(passive, damage)
+
+func apply_vampirism(passive: Dictionary, damage: int) -> void:
+	var heal_percent = float(passive.get("heal_percent", 0.0))
+	var heal_amount = ceili(damage * heal_percent)
+	if heal_amount <= 0:
+		return
+
+	var previous_hp = int(player_stats["hp"])
+	player_stats["hp"] = min(int(player_stats["max_hp"]), previous_hp + heal_amount)
+	var actual_heal = int(player_stats["hp"]) - previous_hp
+	if actual_heal > 0:
+		add_log("%s heals for %d HP from Vampirism!" % [player_stats["name"], actual_heal])
 
 func enemy_attack():
 	var damage = calculate_damage(enemy_stats["attack"], player_stats["defense"])

@@ -45,10 +45,15 @@ custom_minimum_size = Vector2(560, 96)
 layout_mode = 2
 text = "Базовый персонаж"
 
+[node name="VampireButton" type="Button" parent="Content/CharacterList"]
+custom_minimum_size = Vector2(560, 96)
+layout_mode = 2
+text = "Вампир"
+
 [node name="Hint" type="Label" parent="Content"]
 custom_minimum_size = Vector2(560, 40)
 layout_mode = 2
-text = "Стартовый герой для тестовой комнаты"
+text = "Вампир лечится на 5% от нанесённого урона"
 horizontal_alignment = 1
 vertical_alignment = 1
 
