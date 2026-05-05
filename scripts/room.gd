@@ -20,16 +20,21 @@ func _ready():
 func build_level() -> void:
 	floor_positions.clear()
 	wall_positions.clear()
+	player.z_index = 20
+
 	floors_container = Node2D.new()
 	floors_container.name = "GeneratedFloors"
+	floors_container.z_index = -20
 	add_child(floors_container)
 
 	walls_container = Node2D.new()
 	walls_container.name = "GeneratedWalls"
+	walls_container.z_index = -10
 	add_child(walls_container)
 
 	enemies_container = Node2D.new()
 	enemies_container.name = "GeneratedEnemies"
+	enemies_container.z_index = 10
 	add_child(enemies_container)
 
 	place_player()
