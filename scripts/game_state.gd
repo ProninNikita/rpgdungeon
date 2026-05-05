@@ -4,7 +4,10 @@ const SAVE_SLOT_COUNT = 3
 const MAIN_LEVEL_PATH = "res://scenes/levels/main_level.tscn"
 const ROOM_WIDTH = 16
 const ROOM_HEIGHT = 16
-const WALL_COUNT = 20
+const MIN_ROOM_COUNT = 4
+const MAX_ROOM_COUNT = 5
+const MIN_ROOM_SIZE = 3
+const MAX_ROOM_SIZE = 5
 const ENEMY_COUNT = 3
 const START_GRID_POS = {"x": 8, "y": 8}
 const CHARACTER_DEFINITIONS = {
@@ -45,7 +48,7 @@ func start_new_game(character_id: String) -> void:
 	current_enemy_id = ""
 	defeated_enemies.clear()
 	level_data = generate_level_data()
-	player_grid_pos = START_GRID_POS.duplicate()
+	player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
 	player_stats = get_character_stats(character_id)
 	active_save_slot = get_first_empty_save_slot()
 	if active_save_slot != 0:
@@ -55,13 +58,17 @@ func load_game(slot: int) -> bool:
 	var save_data = load_save_slot(slot)
 	if save_data.is_empty():
 		return false
-	
+
 	active_save_slot = slot
 	selected_character_id = save_data.get("selected_character_id", "base")
 	level_data = save_data.get("level_data", {})
-	if level_data.is_empty():
+	var regenerated_level = false
+	if not is_valid_level_data(level_data):
 		level_data = generate_level_data()
-	player_grid_pos = save_data.get("player_grid_pos", START_GRID_POS.duplicate())
+		regenerated_level = true
+	player_grid_pos = save_data.get("player_grid_pos", level_data.get("start_position", START_GRID_POS).duplicate())
+	if regenerated_level or not is_grid_position_walkable(level_data, player_grid_pos):
+		player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
 	player_stats = save_data.get("player_stats", get_default_player_stats())
 	current_enemy_id = ""
 	defeated_enemies = save_data.get("defeated_enemies", {})
@@ -70,7 +77,7 @@ func load_game(slot: int) -> bool:
 func save_current_game() -> void:
 	if active_save_slot == 0:
 		return
-	
+
 	var save_data = {
 		"version": "0.1.0",
 		"selected_character_id": selected_character_id,
@@ -80,7 +87,7 @@ func save_current_game() -> void:
 		"defeated_enemies": defeated_enemies,
 		"updated_at": Time.get_datetime_string_from_system(false, true)
 	}
-	
+
 	var file = FileAccess.open(get_save_path(active_save_slot), FileAccess.WRITE)
 	if file == null:
 		return
@@ -89,15 +96,15 @@ func save_current_game() -> void:
 func load_save_slot(slot: int) -> Dictionary:
 	if not save_slot_exists(slot):
 		return {}
-	
+
 	var file = FileAccess.open(get_save_path(slot), FileAccess.READ)
 	if file == null:
 		return {}
-	
+
 	var parsed = JSON.parse_string(file.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return {}
-	
+
 	return parsed
 
 func delete_save_slot(slot: int) -> void:
@@ -125,8 +132,19 @@ func get_save_file_name(slot: int) -> String:
 	return "save_slot_%d.json" % slot
 
 func ensure_level_data() -> void:
-	if level_data.is_empty():
+	if not is_valid_level_data(level_data):
 		level_data = generate_level_data()
+		player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
+
+func is_valid_level_data(data: Dictionary) -> bool:
+	return data.has("floor_tiles") and data.has("walls") and data.has("rooms") and data.has("enemies")
+
+func is_grid_position_walkable(data: Dictionary, grid_position: Dictionary) -> bool:
+	var key = get_grid_key(int(grid_position.get("x", START_GRID_POS["x"])), int(grid_position.get("y", START_GRID_POS["y"])))
+	for floor_tile in data.get("floor_tiles", []):
+		if get_grid_key(floor_tile["x"], floor_tile["y"]) == key:
+			return true
+	return false
 
 func get_default_player_stats() -> Dictionary:
 	return get_character_stats("base")
@@ -172,21 +190,115 @@ func generate_level_data() -> Dictionary:
 	rng.randomize()
 	var level_seed = rng.randi()
 	rng.seed = level_seed
-	
-	var occupied = {}
-	for y in range(START_GRID_POS["y"] - 1, START_GRID_POS["y"] + 2):
-		for x in range(START_GRID_POS["x"] - 1, START_GRID_POS["x"] + 2):
-			occupied[get_grid_key(x, y)] = true
-	
+
+	var rooms = generate_rooms(rng)
+	var floor_positions = {}
+
+	for room in rooms:
+		carve_room(room, floor_positions)
+
+	for index in range(rooms.size() - 1):
+		connect_rooms(rooms[index], rooms[index + 1], floor_positions, rng)
+
+	var floor_tiles = positions_to_array(floor_positions)
+	var walls = build_wall_tiles(floor_positions)
+	var start_position = get_room_center(rooms[0])
+	var enemies = generate_enemy_data(rooms, floor_positions, start_position, rng)
+
+	return {
+		"seed": level_seed,
+		"width": ROOM_WIDTH,
+		"height": ROOM_HEIGHT,
+		"start_position": start_position,
+		"rooms": rooms,
+		"floor_tiles": floor_tiles,
+		"walls": walls,
+		"enemies": enemies
+	}
+
+func generate_rooms(rng: RandomNumberGenerator) -> Array:
+	var rooms = []
+	var target_room_count = rng.randi_range(MIN_ROOM_COUNT, MAX_ROOM_COUNT)
+	var attempts = 0
+
+	while rooms.size() < target_room_count and attempts < 120:
+		attempts += 1
+		var width = rng.randi_range(MIN_ROOM_SIZE, MAX_ROOM_SIZE)
+		var height = rng.randi_range(MIN_ROOM_SIZE, MAX_ROOM_SIZE)
+		var x = rng.randi_range(1, ROOM_WIDTH - width - 1)
+		var y = rng.randi_range(1, ROOM_HEIGHT - height - 1)
+		var room = {"x": x, "y": y, "width": width, "height": height}
+
+		if not does_room_overlap(room, rooms):
+			rooms.append(room)
+
+	if rooms.is_empty():
+		rooms.append({"x": 5, "y": 5, "width": 5, "height": 5})
+
+	return rooms
+
+func does_room_overlap(room: Dictionary, rooms: Array) -> bool:
+	for other in rooms:
+		if room["x"] - 1 < other["x"] + other["width"] + 1 \
+				and room["x"] + room["width"] + 1 > other["x"] - 1 \
+				and room["y"] - 1 < other["y"] + other["height"] + 1 \
+				and room["y"] + room["height"] + 1 > other["y"] - 1:
+			return true
+	return false
+
+func carve_room(room: Dictionary, floor_positions: Dictionary) -> void:
+	for y in range(room["y"], room["y"] + room["height"]):
+		for x in range(room["x"], room["x"] + room["width"]):
+			floor_positions[get_grid_key(x, y)] = {"x": x, "y": y}
+
+func connect_rooms(from_room: Dictionary, to_room: Dictionary, floor_positions: Dictionary, rng: RandomNumberGenerator) -> void:
+	var from_center = get_room_center(from_room)
+	var to_center = get_room_center(to_room)
+
+	if rng.randi_range(0, 1) == 0:
+		carve_horizontal_corridor(from_center["x"], to_center["x"], from_center["y"], floor_positions)
+		carve_vertical_corridor(from_center["y"], to_center["y"], to_center["x"], floor_positions)
+	else:
+		carve_vertical_corridor(from_center["y"], to_center["y"], from_center["x"], floor_positions)
+		carve_horizontal_corridor(from_center["x"], to_center["x"], to_center["y"], floor_positions)
+
+func carve_horizontal_corridor(from_x: int, to_x: int, y: int, floor_positions: Dictionary) -> void:
+	for x in range(min(from_x, to_x), max(from_x, to_x) + 1):
+		floor_positions[get_grid_key(x, y)] = {"x": x, "y": y}
+
+func carve_vertical_corridor(from_y: int, to_y: int, x: int, floor_positions: Dictionary) -> void:
+	for y in range(min(from_y, to_y), max(from_y, to_y) + 1):
+		floor_positions[get_grid_key(x, y)] = {"x": x, "y": y}
+
+func get_room_center(room: Dictionary) -> Dictionary:
+	return {
+		"x": int(room["x"] + floori(room["width"] / 2.0)),
+		"y": int(room["y"] + floori(room["height"] / 2.0))
+	}
+
+func positions_to_array(positions: Dictionary) -> Array:
+	var result = []
+	for position in positions.values():
+		result.append(position)
+	return result
+
+func build_wall_tiles(floor_positions: Dictionary) -> Array:
 	var walls = []
-	while walls.size() < WALL_COUNT:
-		var wall_pos = get_random_free_position(rng, occupied, 1)
-		walls.append(wall_pos)
-		occupied[get_grid_key(wall_pos["x"], wall_pos["y"])] = true
-	
+	for y in range(ROOM_HEIGHT):
+		for x in range(ROOM_WIDTH):
+			if not floor_positions.has(get_grid_key(x, y)):
+				walls.append({"x": x, "y": y})
+	return walls
+
+func generate_enemy_data(rooms: Array, floor_positions: Dictionary, start_position: Dictionary, rng: RandomNumberGenerator) -> Array:
 	var enemies = []
+	var occupied = {
+		get_grid_key(start_position["x"], start_position["y"]): true
+	}
+	var enemy_rooms = rooms.slice(1)
+
 	for index in range(ENEMY_COUNT):
-		var enemy_pos = get_random_free_position(rng, occupied, 3)
+		var enemy_pos = get_random_floor_position(rng, floor_positions, occupied, start_position, enemy_rooms)
 		occupied[get_grid_key(enemy_pos["x"], enemy_pos["y"])] = true
 		enemies.append({
 			"id": "level_enemy_%02d" % [index + 1],
@@ -194,26 +306,43 @@ func generate_level_data() -> Dictionary:
 			"x": enemy_pos["x"],
 			"y": enemy_pos["y"]
 		})
-	
+
+	return enemies
+
+func get_random_floor_position(
+	rng: RandomNumberGenerator,
+	floor_positions: Dictionary,
+	occupied: Dictionary,
+	start_position: Dictionary,
+	preferred_rooms: Array
+) -> Dictionary:
+	for _attempt in range(200):
+		var candidate = get_random_room_position(rng, preferred_rooms)
+		if is_valid_spawn_position(candidate, occupied, start_position):
+			return candidate
+
+	var floor_tiles = floor_positions.values()
+	for _attempt in range(200):
+		var candidate = floor_tiles[rng.randi_range(0, floor_tiles.size() - 1)]
+		if is_valid_spawn_position(candidate, occupied, start_position):
+			return candidate
+
+	return start_position
+
+func get_random_room_position(rng: RandomNumberGenerator, rooms: Array) -> Dictionary:
+	if rooms.is_empty():
+		return START_GRID_POS
+
+	var room = rooms[rng.randi_range(0, rooms.size() - 1)]
 	return {
-		"seed": level_seed,
-		"width": ROOM_WIDTH,
-		"height": ROOM_HEIGHT,
-		"start_position": START_GRID_POS,
-		"walls": walls,
-		"enemies": enemies
+		"x": rng.randi_range(room["x"], room["x"] + room["width"] - 1),
+		"y": rng.randi_range(room["y"], room["y"] + room["height"] - 1)
 	}
 
-func get_random_free_position(rng: RandomNumberGenerator, occupied: Dictionary, min_distance_from_start: int) -> Dictionary:
-	for _attempt in range(500):
-		var x = rng.randi_range(1, ROOM_WIDTH - 2)
-		var y = rng.randi_range(1, ROOM_HEIGHT - 2)
-		var key = get_grid_key(x, y)
-		var distance = abs(x - START_GRID_POS["x"]) + abs(y - START_GRID_POS["y"])
-		if not occupied.has(key) and distance >= min_distance_from_start:
-			return {"x": x, "y": y}
-	
-	return {"x": START_GRID_POS["x"], "y": START_GRID_POS["y"]}
+func is_valid_spawn_position(candidate: Dictionary, occupied: Dictionary, start_position: Dictionary) -> bool:
+	var key = get_grid_key(candidate["x"], candidate["y"])
+	var distance = abs(candidate["x"] - start_position["x"]) + abs(candidate["y"] - start_position["y"])
+	return not occupied.has(key) and distance >= 4
 
 func get_grid_key(x: int, y: int) -> String:
 	return "%d:%d" % [x, y]
