@@ -10,6 +10,8 @@ const MIN_ROOM_SIZE = 3
 const MAX_ROOM_SIZE = 5
 const ENEMY_COUNT = 3
 const START_GRID_POS = {"x": 8, "y": 8}
+const DEFAULT_ENEMY_TYPE = "goblin"
+const MAX_INVENTORY_SIZE = 16
 const CHARACTER_DEFINITIONS = {
 	"base": {
 		"name": "Player",
@@ -34,12 +36,47 @@ const CHARACTER_DEFINITIONS = {
 		]
 	}
 }
+const ENEMY_DEFINITIONS = {
+	"goblin": {
+		"name": "Goblin",
+		"hp": 30,
+		"max_hp": 30,
+		"attack": 5,
+		"defense": 0
+	},
+	"skeleton": {
+		"name": "Skeleton",
+		"hp": 35,
+		"max_hp": 35,
+		"attack": 80,
+		"defense": 1
+	}
+}
+const ITEM_DEFINITIONS = {
+	"wooden_sword": {
+		"name": "Деревянный меч",
+		"type": "weapon",
+		"slot": "weapon"
+	},
+	"leather_chestpiece": {
+		"name": "Кожаный нагрудник",
+		"type": "armor",
+		"slot": "armor"
+	}
+}
+const DEFAULT_EQUIPMENT = {
+	"weapon": "",
+	"armor": "",
+	"accessory": ""
+}
 
 var active_save_slot: int = 0
 var selected_character_id: String = "base"
 var level_data: Dictionary = {}
 var player_grid_pos: Dictionary = START_GRID_POS.duplicate()
 var player_stats: Dictionary = get_default_player_stats()
+var inventory: Array = []
+var equipment: Dictionary = DEFAULT_EQUIPMENT.duplicate()
 var current_enemy_id: String = ""
 var defeated_enemies: Dictionary = {}
 
@@ -47,6 +84,8 @@ func start_new_game(character_id: String) -> void:
 	selected_character_id = character_id
 	current_enemy_id = ""
 	defeated_enemies.clear()
+	inventory.clear()
+	equipment = DEFAULT_EQUIPMENT.duplicate()
 	level_data = generate_level_data()
 	player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
 	player_stats = get_character_stats(character_id)
@@ -66,10 +105,14 @@ func load_game(slot: int) -> bool:
 	if not is_valid_level_data(level_data):
 		level_data = generate_level_data()
 		regenerated_level = true
+	else:
+		normalize_level_data()
 	player_grid_pos = save_data.get("player_grid_pos", level_data.get("start_position", START_GRID_POS).duplicate())
 	if regenerated_level or not is_grid_position_walkable(level_data, player_grid_pos):
 		player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
 	player_stats = save_data.get("player_stats", get_default_player_stats())
+	inventory = normalize_inventory(save_data.get("inventory", []))
+	equipment = normalize_equipment(save_data.get("equipment", {}))
 	current_enemy_id = ""
 	defeated_enemies = save_data.get("defeated_enemies", {})
 	return true
@@ -84,6 +127,8 @@ func save_current_game() -> void:
 		"level_data": level_data,
 		"player_grid_pos": player_grid_pos,
 		"player_stats": player_stats,
+		"inventory": inventory,
+		"equipment": equipment,
 		"defeated_enemies": defeated_enemies,
 		"updated_at": Time.get_datetime_string_from_system(false, true)
 	}
@@ -135,6 +180,8 @@ func ensure_level_data() -> void:
 	if not is_valid_level_data(level_data):
 		level_data = generate_level_data()
 		player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
+	else:
+		normalize_level_data()
 
 func is_valid_level_data(data: Dictionary) -> bool:
 	return data.has("floor_tiles") and data.has("walls") and data.has("rooms") and data.has("enemies")
@@ -159,6 +206,143 @@ func get_character_stats(character_id: String) -> Dictionary:
 		"name": str(definition["name"]),
 		"passives": definition.get("passives", []).duplicate(true)
 	}
+
+func get_enemy_stats(enemy_type: String) -> Dictionary:
+	var definition = ENEMY_DEFINITIONS.get(enemy_type, ENEMY_DEFINITIONS[DEFAULT_ENEMY_TYPE])
+	return {
+		"type": enemy_type if ENEMY_DEFINITIONS.has(enemy_type) else DEFAULT_ENEMY_TYPE,
+		"name": str(definition["name"]),
+		"hp": int(definition["hp"]),
+		"max_hp": int(definition["max_hp"]),
+		"attack": int(definition["attack"]),
+		"defense": int(definition["defense"])
+	}
+
+func get_current_enemy_battle_stats() -> Dictionary:
+	var enemy_data = get_enemy_data(current_enemy_id)
+	if enemy_data.is_empty():
+		return get_enemy_stats(DEFAULT_ENEMY_TYPE)
+
+	var stats = get_enemy_stats(str(enemy_data.get("type", DEFAULT_ENEMY_TYPE)))
+	stats.merge(enemy_data, true)
+	stats.erase("id")
+	stats.erase("x")
+	stats.erase("y")
+	return {
+		"type": str(stats.get("type", DEFAULT_ENEMY_TYPE)),
+		"name": str(stats.get("name", "Goblin")),
+		"hp": int(stats.get("hp", stats.get("max_hp", 30))),
+		"max_hp": int(stats.get("max_hp", 30)),
+		"attack": int(stats.get("attack", 5)),
+		"defense": int(stats.get("defense", 0))
+	}
+
+func get_enemy_data(enemy_id: String) -> Dictionary:
+	for enemy_data in level_data.get("enemies", []):
+		if enemy_data.get("id", "") == enemy_id:
+			return enemy_data
+	return {}
+
+func normalize_level_data() -> void:
+	var normalized_enemies = []
+	for enemy_data in level_data.get("enemies", []):
+		normalized_enemies.append(normalize_enemy_data(enemy_data))
+	level_data["enemies"] = normalized_enemies
+
+func normalize_enemy_data(enemy_data: Dictionary) -> Dictionary:
+	var enemy_type = str(enemy_data.get("type", DEFAULT_ENEMY_TYPE))
+	var stats = get_enemy_stats(enemy_type)
+	return {
+		"id": str(enemy_data.get("id", "")),
+		"type": stats["type"],
+		"name": str(enemy_data.get("name", stats["name"])),
+		"x": int(enemy_data.get("x", START_GRID_POS["x"])),
+		"y": int(enemy_data.get("y", START_GRID_POS["y"])),
+		"hp": int(enemy_data.get("hp", stats["hp"])),
+		"max_hp": int(enemy_data.get("max_hp", stats["max_hp"])),
+		"attack": int(enemy_data.get("attack", stats["attack"])),
+		"defense": int(enemy_data.get("defense", stats["defense"]))
+	}
+
+func normalize_inventory(saved_inventory: Variant) -> Array:
+	var normalized = []
+	if typeof(saved_inventory) != TYPE_ARRAY:
+		return normalized
+
+	for item_id in saved_inventory:
+		var item_id_string = str(item_id)
+		if ITEM_DEFINITIONS.has(item_id_string) and normalized.size() < MAX_INVENTORY_SIZE:
+			normalized.append(item_id_string)
+	return normalized
+
+func normalize_equipment(saved_equipment: Variant) -> Dictionary:
+	var normalized = DEFAULT_EQUIPMENT.duplicate()
+	if typeof(saved_equipment) != TYPE_DICTIONARY:
+		return normalized
+
+	for slot in normalized.keys():
+		var item_id = str(saved_equipment.get(slot, ""))
+		if item_id.is_empty():
+			continue
+		var item = get_item_definition(item_id)
+		if not item.is_empty() and item.get("slot", "") == slot:
+			normalized[slot] = item_id
+	return normalized
+
+func get_item_definition(item_id: String) -> Dictionary:
+	return ITEM_DEFINITIONS.get(item_id, {})
+
+func get_item_name(item_id: String) -> String:
+	var item = get_item_definition(item_id)
+	if item.is_empty():
+		return "Неизвестный предмет"
+	return str(item.get("name", item_id))
+
+func add_inventory_item(item_id: String, should_save: bool = false) -> bool:
+	if not ITEM_DEFINITIONS.has(item_id) or inventory.size() >= MAX_INVENTORY_SIZE:
+		return false
+
+	inventory.append(item_id)
+	if should_save:
+		save_current_game()
+	return true
+
+func equip_inventory_item(inventory_index: int, should_save: bool = true) -> bool:
+	if inventory_index < 0 or inventory_index >= inventory.size():
+		return false
+
+	var item_id = str(inventory[inventory_index])
+	var item = get_item_definition(item_id)
+	if item.is_empty():
+		return false
+
+	var slot = str(item.get("slot", ""))
+	if not equipment.has(slot):
+		return false
+
+	var previous_item_id = str(equipment.get(slot, ""))
+	equipment[slot] = item_id
+	inventory.remove_at(inventory_index)
+	if not previous_item_id.is_empty():
+		inventory.append(previous_item_id)
+
+	if should_save:
+		save_current_game()
+	return true
+
+func grant_current_enemy_drop() -> String:
+	var item_id = get_current_enemy_drop_item_id()
+	if item_id.is_empty():
+		return ""
+
+	if add_inventory_item(item_id):
+		return item_id
+	return ""
+
+func get_current_enemy_drop_item_id() -> String:
+	if current_enemy_id.ends_with("03"):
+		return "leather_chestpiece"
+	return "wooden_sword"
 
 func get_player_grid_position() -> Vector2i:
 	return Vector2i(int(player_grid_pos.get("x", START_GRID_POS["x"])), int(player_grid_pos.get("y", START_GRID_POS["y"])))
@@ -300,14 +484,24 @@ func generate_enemy_data(rooms: Array, floor_positions: Dictionary, start_positi
 	for index in range(ENEMY_COUNT):
 		var enemy_pos = get_random_floor_position(rng, floor_positions, occupied, start_position, enemy_rooms)
 		occupied[get_grid_key(enemy_pos["x"], enemy_pos["y"])] = true
-		enemies.append({
-			"id": "level_enemy_%02d" % [index + 1],
-			"name": "Goblin",
-			"x": enemy_pos["x"],
-			"y": enemy_pos["y"]
-		})
+		var enemy_type = "skeleton" if index == 0 else DEFAULT_ENEMY_TYPE
+		enemies.append(build_enemy_data("level_enemy_%02d" % [index + 1], enemy_type, enemy_pos))
 
 	return enemies
+
+func build_enemy_data(enemy_id: String, enemy_type: String, enemy_pos: Dictionary) -> Dictionary:
+	var stats = get_enemy_stats(enemy_type)
+	return {
+		"id": enemy_id,
+		"type": stats["type"],
+		"name": stats["name"],
+		"x": enemy_pos["x"],
+		"y": enemy_pos["y"],
+		"hp": stats["hp"],
+		"max_hp": stats["max_hp"],
+		"attack": stats["attack"],
+		"defense": stats["defense"]
+	}
 
 func get_random_floor_position(
 	rng: RandomNumberGenerator,

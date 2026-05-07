@@ -12,6 +12,10 @@ The project uses semantic versioning while it is in prototype stage:
 - Reworked dungeon generation to create connected rooms and corridors.
 - Added a character inventory window with equipment, 16 inventory slots, and a passive abilities tab.
 - Added character stats and passive ability display to the inventory window.
+- Added generated enemy battle stats and connected combat to the current dungeon enemy.
+- Added a death screen with new game and main menu choices after defeat.
+- Added a high-damage Skeleton enemy to dungeon generation for death flow testing.
+- Added saved inventory and equipment data with test item drops and equipping.
 
 ## [0.1.1] - 2026-05-05
 

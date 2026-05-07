@@ -26,6 +26,7 @@ func _ready():
 	if position != Vector2.ZERO:
 		grid_pos = world_to_grid_position(position)
 	set_grid_position(grid_pos)
+	$Label.text = name_label
 	add_to_group("enemies")
 
 func set_grid_position(new_grid_pos: Vector2i) -> void:

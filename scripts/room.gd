@@ -91,6 +91,10 @@ func spawn_enemies() -> void:
 		enemy.enemy_id = enemy_id
 		enemy.grid_pos = grid_pos
 		enemy.name_label = enemy_data.get("name", "Goblin")
+		enemy.max_hp = int(enemy_data.get("max_hp", enemy.max_hp))
+		enemy.current_hp = int(enemy_data.get("hp", enemy.max_hp))
+		enemy.attack_power = int(enemy_data.get("attack", enemy.attack_power))
+		enemy.defense = int(enemy_data.get("defense", enemy.defense))
 		enemies_container.add_child(enemy)
 
 func is_grid_position_blocked(grid_pos: Vector2i) -> bool:

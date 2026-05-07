@@ -13,17 +13,12 @@ var battle_log: Array = []
 @onready var enemy_hp_bar = $EnemyHPBar
 
 const ATTACK_SPEED = 1.5
+const DEATH_SCREEN_PATH = "res://scenes/ui/death_screen.tscn"
+const MAIN_LEVEL_PATH = "res://scenes/levels/main_level.tscn"
 
 func _ready():
 	player_stats = GameState.get_player_battle_stats()
-	
-	enemy_stats = {
-		"hp": 30,
-		"max_hp": 30,
-		"attack": 5,
-		"defense": 0,
-		"name": "Goblin"
-	}
+	enemy_stats = GameState.get_current_enemy_battle_stats()
 	
 	update_ui()
 	add_log("Battle started!")
@@ -106,21 +101,32 @@ func update_ui():
 
 func end_battle(result: String):
 	is_battle_active = false
-	GameState.set_player_battle_stats(player_stats)
 	
 	if result == "win":
+		GameState.set_player_battle_stats(player_stats)
 		result_label.text = "VICTORY!"
 		result_label.modulate = Color.GREEN
 		add_log("Victory! You won!")
+		grant_drop_reward()
 		GameState.mark_current_enemy_defeated()
 	else:
 		result_label.text = "DEFEAT!"
 		result_label.modulate = Color.RED
 		add_log("Defeat! You lost!")
-		GameState.save_current_game()
 	
 	result_label.show()
 	
 	await get_tree().create_timer(3.0).timeout
 	GameState.clear_current_battle()
-	get_tree().change_scene_to_file("res://scenes/levels/main_level.tscn")
+	if result == "win":
+		get_tree().change_scene_to_file(MAIN_LEVEL_PATH)
+	else:
+		get_tree().change_scene_to_file(DEATH_SCREEN_PATH)
+
+func grant_drop_reward() -> void:
+	var item_id = GameState.grant_current_enemy_drop()
+	if item_id.is_empty():
+		add_log("No room for loot.")
+		return
+
+	add_log("Found: %s" % GameState.get_item_name(item_id))
