@@ -101,6 +101,12 @@ text = "Статы"
 theme_override_font_sizes/font_size = 18
 vertical_alignment = 1
 
+[node name="GoldLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
+custom_minimum_size = Vector2(268, 24)
+layout_mode = 2
+text = "Золото: 0"
+vertical_alignment = 1
+
 [node name="HpLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
 custom_minimum_size = Vector2(268, 24)
 layout_mode = 2

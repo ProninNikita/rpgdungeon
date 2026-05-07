@@ -45,6 +45,7 @@ func move_to_grid(new_grid_pos: Vector2i):
 		
 		# Проверяем встречу с врагом
 		check_for_encounter()
+		check_for_interaction()
 
 func is_valid_position(pos: Vector2i) -> bool:
 	# Границы комнаты 16x16
@@ -66,6 +67,11 @@ func check_for_encounter():
 			# Нашли врага! Начинаем бой
 			start_battle(enemy)
 			return
+
+func check_for_interaction() -> void:
+	var room = get_parent()
+	if room != null and room.has_method("handle_player_interaction"):
+		room.handle_player_interaction(grid_pos)
 
 func start_battle(enemy):
 	if input_locked:

@@ -8,6 +8,8 @@ The project uses semantic versioning while it is in prototype stage:
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-07
+
 ### Added
 - Reworked dungeon generation to create connected rooms and corridors.
 - Added a character inventory window with equipment, 16 inventory slots, and a passive abilities tab.
@@ -16,6 +18,12 @@ The project uses semantic versioning while it is in prototype stage:
 - Added a death screen with new game and main menu choices after defeat.
 - Added a high-damage Skeleton enemy to dungeon generation for death flow testing.
 - Added saved inventory and equipment data with test item drops and equipping.
+- Added an inventory item action menu for equipping or discarding items.
+- Added equipment stat bonuses for weapon and armor items.
+- Added balanced enemy types with evasion, armor piercing, and regeneration traits.
+- Added three-floor dungeon progression with post-clear chests and branching exits.
+- Added gold rewards and loot tables for enemies and floor chests.
+- Added map HUD, reward messages, enemy trait summaries, item bonus text, and richer save slot descriptions.
 
 ## [0.1.1] - 2026-05-05
 

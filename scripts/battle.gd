@@ -23,6 +23,9 @@ func _ready():
 	update_ui()
 	add_log("Battle started!")
 	add_log("Player vs " + enemy_stats["name"])
+	var traits_text = get_enemy_traits_text()
+	if not traits_text.is_empty():
+		add_log("Enemy traits: " + traits_text)
 	
 	await get_tree().create_timer(1.5).timeout
 	battle_loop()
@@ -38,6 +41,11 @@ func battle_loop():
 			await get_tree().create_timer(ATTACK_SPEED).timeout
 
 func player_attack():
+	if should_enemy_evade():
+		add_log("%s dodges the attack!" % enemy_stats["name"])
+		update_ui()
+		return
+
 	var damage = calculate_damage(player_stats["attack"], enemy_stats["defense"])
 	enemy_stats["hp"] = max(0, enemy_stats["hp"] - damage)
 	
@@ -66,19 +74,76 @@ func apply_vampirism(passive: Dictionary, damage: int) -> void:
 		add_log("%s heals for %d HP from Vampirism!" % [player_stats["name"], actual_heal])
 
 func enemy_attack():
-	var damage = calculate_damage(enemy_stats["attack"], player_stats["defense"])
+	var armor_pierce = get_enemy_armor_pierce()
+	var effective_defense = max(0, int(player_stats["defense"]) - armor_pierce)
+	var damage = calculate_damage(enemy_stats["attack"], effective_defense)
 	player_stats["hp"] = max(0, player_stats["hp"] - damage)
 	
-	add_log("%s attacks for %d damage!" % [enemy_stats["name"], damage])
+	if armor_pierce > 0:
+		add_log("%s pierces armor and attacks for %d damage!" % [enemy_stats["name"], damage])
+	else:
+		add_log("%s attacks for %d damage!" % [enemy_stats["name"], damage])
 	update_ui()
 	
 	if player_stats["hp"] <= 0:
 		end_battle("lose")
+		return
+
+	apply_enemy_regeneration()
 
 func calculate_damage(attack: int, defense: int) -> int:
 	var base_damage = attack + randi_range(-2, 2)
 	var actual_damage = max(1, base_damage - defense)
 	return actual_damage
+
+func should_enemy_evade() -> bool:
+	var evasion_feature = get_enemy_feature("evasion")
+	if evasion_feature.is_empty():
+		return false
+
+	return randf() < float(evasion_feature.get("chance", 0.0))
+
+func get_enemy_armor_pierce() -> int:
+	var armor_pierce_feature = get_enemy_feature("armor_pierce")
+	if armor_pierce_feature.is_empty():
+		return 0
+
+	return int(armor_pierce_feature.get("pierce", 0))
+
+func apply_enemy_regeneration() -> void:
+	var regeneration_feature = get_enemy_feature("regeneration")
+	if regeneration_feature.is_empty():
+		return
+
+	var heal_amount = int(regeneration_feature.get("heal", 0))
+	if heal_amount <= 0 or int(enemy_stats["hp"]) >= int(enemy_stats["max_hp"]):
+		return
+
+	var previous_hp = int(enemy_stats["hp"])
+	enemy_stats["hp"] = min(int(enemy_stats["max_hp"]), previous_hp + heal_amount)
+	var actual_heal = int(enemy_stats["hp"]) - previous_hp
+	if actual_heal > 0:
+		add_log("%s regenerates %d HP!" % [enemy_stats["name"], actual_heal])
+		update_ui()
+
+func get_enemy_feature(feature_id: String) -> Dictionary:
+	for feature in enemy_stats.get("features", []):
+		if feature.get("id", "") == feature_id:
+			return feature
+	return {}
+
+func get_enemy_traits_text() -> String:
+	var traits = []
+	for feature in enemy_stats.get("features", []):
+		var feature_id = feature.get("id", "")
+		if feature_id == "armor_pierce":
+			traits.append("armor pierce %d" % int(feature.get("pierce", 0)))
+		elif feature_id == "evasion":
+			traits.append("%d%% evasion" % int(round(float(feature.get("chance", 0.0)) * 100.0)))
+		elif feature_id == "regeneration":
+			traits.append("regenerates %d HP" % int(feature.get("heal", 0)))
+
+	return ", ".join(traits)
 
 func add_log(message: String):
 	battle_log.append(message)
@@ -124,9 +189,16 @@ func end_battle(result: String):
 		get_tree().change_scene_to_file(DEATH_SCREEN_PATH)
 
 func grant_drop_reward() -> void:
-	var item_id = GameState.grant_current_enemy_drop()
+	var reward = GameState.grant_current_enemy_reward()
+	var gold_amount = int(reward.get("gold", 0))
+	if gold_amount > 0:
+		add_log("Received: %d gold" % gold_amount)
+
+	var item_id = str(reward.get("item_id", ""))
 	if item_id.is_empty():
-		add_log("No room for loot.")
 		return
 
-	add_log("Found: %s" % GameState.get_item_name(item_id))
+	if bool(reward.get("item_added", false)):
+		add_log("Found: %s" % GameState.get_item_name(item_id))
+	else:
+		add_log("Inventory full. %s was lost." % GameState.get_item_name(item_id))

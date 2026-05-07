@@ -10,9 +10,16 @@ var wall_positions: Dictionary = {}
 var floors_container: Node2D
 var walls_container: Node2D
 var enemies_container: Node2D
+var interactables_container: Node2D
 
 @onready var player = $Player
 @onready var inventory_ui = $UI/InventoryUI
+@onready var floor_label = $UI/Hud/HudContent/FloorLabel
+@onready var path_label = $UI/Hud/HudContent/PathLabel
+@onready var gold_label = $UI/Hud/HudContent/GoldLabel
+@onready var enemies_label = $UI/Hud/HudContent/EnemiesLabel
+@onready var message_panel = $UI/MessagePanel
+@onready var message_label = $UI/MessagePanel/MessageLabel
 
 func _ready():
 	inventory_ui.inventory_toggled.connect(_on_inventory_toggled)
@@ -48,10 +55,19 @@ func build_level() -> void:
 	enemies_container.z_index = 10
 	add_child(enemies_container)
 
+	interactables_container = Node2D.new()
+	interactables_container.name = "GeneratedInteractables"
+	interactables_container.z_index = 8
+	add_child(interactables_container)
+
 	place_player()
 	build_floors()
 	build_walls()
 	spawn_enemies()
+	build_interactables()
+	update_hud()
+	if GameState.is_level_cleared():
+		show_map_message("Floor cleared. Chest and exits are available.")
 
 func place_player() -> void:
 	if player != null and player.has_method("set_grid_position"):
@@ -96,6 +112,67 @@ func spawn_enemies() -> void:
 		enemy.attack_power = int(enemy_data.get("attack", enemy.attack_power))
 		enemy.defense = int(enemy_data.get("defense", enemy.defense))
 		enemies_container.add_child(enemy)
+
+func build_interactables() -> void:
+	var chest_data = GameState.get_visible_chest()
+	if not chest_data.is_empty():
+		create_map_marker(Vector2i(chest_data["x"], chest_data["y"]), Color(0.85, 0.58, 0.16, 1), "C")
+
+	for exit_data in GameState.get_visible_exits():
+		var label = "E" if exit_data.get("path", "") == "elite" else ">"
+		var color = Color(0.8, 0.25, 0.25, 1) if exit_data.get("path", "") == "elite" else Color(0.2, 0.7, 0.35, 1)
+		create_map_marker(Vector2i(exit_data["x"], exit_data["y"]), color, label)
+
+func create_map_marker(grid_pos: Vector2i, color: Color, label_text: String) -> void:
+	var marker = ColorRect.new()
+	marker.position = Vector2(grid_pos * TILE_SIZE) + Vector2(4, 4)
+	marker.size = Vector2(24, 24)
+	marker.color = color
+	interactables_container.add_child(marker)
+
+	var label = Label.new()
+	label.position = Vector2(grid_pos * TILE_SIZE)
+	label.size = Vector2(TILE_SIZE, TILE_SIZE)
+	label.text = label_text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 16)
+	interactables_container.add_child(label)
+
+func handle_player_interaction(grid_pos: Vector2i) -> bool:
+	var chest_data = GameState.get_visible_chest()
+	if not chest_data.is_empty() and Vector2i(chest_data["x"], chest_data["y"]) == grid_pos:
+		var gold_amount = GameState.get_visible_chest_gold()
+		var item_id = GameState.open_level_chest()
+		if not item_id.is_empty():
+			show_map_message("Chest: %s and %d gold" % [GameState.get_item_name(item_id), gold_amount])
+			rebuild_interactables()
+			update_hud()
+		return true
+
+	for exit_data in GameState.get_visible_exits():
+		if Vector2i(exit_data["x"], exit_data["y"]) == grid_pos:
+			show_map_message("Entering %s." % str(exit_data.get("label", "next floor")))
+			if GameState.advance_to_next_floor(str(exit_data.get("id", ""))):
+				get_tree().change_scene_to_file(GameState.MAIN_LEVEL_PATH)
+			return true
+
+	return false
+
+func rebuild_interactables() -> void:
+	for child in interactables_container.get_children():
+		child.queue_free()
+	build_interactables()
+
+func update_hud() -> void:
+	floor_label.text = "Floor: %d/%d" % [GameState.current_floor, GameState.MAX_FLOOR]
+	path_label.text = "Path: %s" % GameState.get_current_path_label()
+	gold_label.text = "Gold: %d" % GameState.gold
+	enemies_label.text = "Enemies left: %d" % GameState.get_remaining_enemy_count()
+
+func show_map_message(message: String) -> void:
+	message_label.text = message
+	message_panel.show()
 
 func is_grid_position_blocked(grid_pos: Vector2i) -> bool:
 	return not floor_positions.has(get_grid_key(grid_pos))
