@@ -1,58 +1,47 @@
 extends Node
 
-const SAVE_SLOT_COUNT = 3
-const MAIN_LEVEL_PATH = "res://scenes/levels/main_level.tscn"
-const ROOM_WIDTH = 16
-const ROOM_HEIGHT = 16
-const MIN_ROOM_COUNT = 4
-const MAX_ROOM_COUNT = 5
-const MIN_ROOM_SIZE = 3
-const MAX_ROOM_SIZE = 5
-const ENEMY_COUNT = 4
-const MAX_FLOOR = 3
-const START_GRID_POS = {"x": 8, "y": 8}
+const SaveManager = preload("res://scripts/save_manager.gd")
+const DungeonGenerator = preload("res://scripts/dungeon_generator.gd")
+const ItemDatabase = preload("res://scripts/item_database.gd")
+const ScenePaths = preload("res://scripts/scene_paths.gd")
+const ResultData = preload("res://scripts/result_data.gd")
+
+const SAVE_SLOT_COUNT = SaveManager.SAVE_SLOT_COUNT
+const SAVE_VERSION = "0.1.2"
+const MAIN_LEVEL_PATH = ScenePaths.MAIN_LEVEL
+const ROOM_WIDTH = DungeonGenerator.ROOM_WIDTH
+const ROOM_HEIGHT = DungeonGenerator.ROOM_HEIGHT
+const MIN_ROOM_COUNT = DungeonGenerator.MIN_ROOM_COUNT
+const MAX_ROOM_COUNT = DungeonGenerator.MAX_ROOM_COUNT
+const MIN_ROOM_SIZE = DungeonGenerator.MIN_ROOM_SIZE
+const MAX_ROOM_SIZE = DungeonGenerator.MAX_ROOM_SIZE
+const ENEMY_COUNT = DungeonGenerator.ENEMY_COUNT
+const MAX_FLOOR = DungeonGenerator.MAX_FLOOR
+const START_GRID_POS = DungeonGenerator.START_GRID_POS
 const DEFAULT_ENEMY_TYPE = "goblin"
-const DUNGEON_ENEMY_TYPES = ["goblin", "skeleton", "bat", "slime"]
-const FLOOR_PATH_NORMAL = "normal"
-const FLOOR_PATH_ELITE = "elite"
-const MAX_INVENTORY_SIZE = 16
-const LOOT_TABLES = {
-	"goblin": {
-		"gold_min": 4,
-		"gold_max": 8,
-		"item_chance": 0.20,
-		"items": ["wooden_sword"]
-	},
-	"skeleton": {
-		"gold_min": 6,
-		"gold_max": 10,
-		"item_chance": 0.25,
-		"items": ["leather_chestpiece"]
-	},
-	"bat": {
-		"gold_min": 3,
-		"gold_max": 7,
-		"item_chance": 0.15,
-		"items": ["wooden_sword"]
-	},
-	"slime": {
-		"gold_min": 5,
-		"gold_max": 9,
-		"item_chance": 0.20,
-		"items": ["leather_chestpiece"]
-	}
-}
+const DUNGEON_ENEMY_TYPES = DungeonGenerator.DUNGEON_ENEMY_TYPES
+const FLOOR_PATH_NORMAL = DungeonGenerator.FLOOR_PATH_NORMAL
+const FLOOR_PATH_ELITE = DungeonGenerator.FLOOR_PATH_ELITE
+const MAX_INVENTORY_SIZE = ItemDatabase.MAX_INVENTORY_SIZE
+const LOOT_TABLES = ItemDatabase.LOOT_TABLES
 const CHARACTER_DEFINITIONS = {
 	"base": {
-		"name": "Player",
+		"name": "Герой",
 		"hp": 100,
 		"max_hp": 100,
 		"attack": 10,
 		"defense": 2,
-		"passives": []
+		"passives": [
+			{
+				"id": "resolve",
+				"name": "Стойкость",
+				"trigger_hp_percent": 0.30,
+				"heal_percent": 0.20
+			}
+		]
 	},
 	"vampire": {
-		"name": "Vampire",
+		"name": "Вампир",
 		"hp": 90,
 		"max_hp": 90,
 		"attack": 11,
@@ -60,7 +49,7 @@ const CHARACTER_DEFINITIONS = {
 		"passives": [
 			{
 				"id": "vampirism",
-				"name": "Vampirism",
+				"name": "Вампиризм",
 				"heal_percent": 0.05
 			}
 		]
@@ -68,7 +57,7 @@ const CHARACTER_DEFINITIONS = {
 }
 const ENEMY_DEFINITIONS = {
 	"goblin": {
-		"name": "Goblin",
+		"name": "Гоблин",
 		"hp": 28,
 		"max_hp": 28,
 		"attack": 6,
@@ -76,7 +65,7 @@ const ENEMY_DEFINITIONS = {
 		"features": []
 	},
 	"skeleton": {
-		"name": "Skeleton",
+		"name": "Скелет",
 		"hp": 24,
 		"max_hp": 24,
 		"attack": 10,
@@ -84,13 +73,13 @@ const ENEMY_DEFINITIONS = {
 		"features": [
 			{
 				"id": "armor_pierce",
-				"name": "Armor Pierce",
+				"name": "Пробитие брони",
 				"pierce": 2
 			}
 		]
 	},
 	"bat": {
-		"name": "Bat",
+		"name": "Летучая мышь",
 		"hp": 18,
 		"max_hp": 18,
 		"attack": 5,
@@ -98,13 +87,13 @@ const ENEMY_DEFINITIONS = {
 		"features": [
 			{
 				"id": "evasion",
-				"name": "Evasion",
+				"name": "Уклонение",
 				"chance": 0.25
 			}
 		]
 	},
 	"slime": {
-		"name": "Slime",
+		"name": "Слизень",
 		"hp": 42,
 		"max_hp": 42,
 		"attack": 4,
@@ -112,35 +101,14 @@ const ENEMY_DEFINITIONS = {
 		"features": [
 			{
 				"id": "regeneration",
-				"name": "Regeneration",
+				"name": "Регенерация",
 				"heal": 2
 			}
 		]
 	}
 }
-const ITEM_DEFINITIONS = {
-	"wooden_sword": {
-		"name": "Деревянный меч",
-		"type": "weapon",
-		"slot": "weapon",
-		"bonuses": {
-			"attack": 2
-		}
-	},
-	"leather_chestpiece": {
-		"name": "Кожаный нагрудник",
-		"type": "armor",
-		"slot": "armor",
-		"bonuses": {
-			"defense": 1
-		}
-	}
-}
-const DEFAULT_EQUIPMENT = {
-	"weapon": "",
-	"armor": "",
-	"accessory": ""
-}
+const ITEM_DEFINITIONS = ItemDatabase.ITEM_DEFINITIONS
+const DEFAULT_EQUIPMENT = ItemDatabase.DEFAULT_EQUIPMENT
 
 var active_save_slot: int = 0
 var selected_character_id: String = "base"
@@ -154,7 +122,19 @@ var equipment: Dictionary = DEFAULT_EQUIPMENT.duplicate()
 var current_enemy_id: String = ""
 var defeated_enemies: Dictionary = {}
 
-func start_new_game(character_id: String) -> void:
+func start_new_game(character_id: String) -> bool:
+	var save_slot = get_first_empty_save_slot()
+	if save_slot == 0:
+		return false
+
+	return start_new_game_in_slot(character_id, save_slot, false)
+
+func start_new_game_in_slot(character_id: String, slot: int, overwrite: bool = false) -> bool:
+	if not SaveManager.is_valid_slot(slot):
+		return false
+	if save_slot_exists(slot) and not overwrite:
+		return false
+
 	selected_character_id = character_id
 	current_enemy_id = ""
 	defeated_enemies.clear()
@@ -165,19 +145,21 @@ func start_new_game(character_id: String) -> void:
 	level_data = generate_level_data(current_floor, FLOOR_PATH_NORMAL)
 	player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
 	player_stats = get_character_stats(character_id)
-	active_save_slot = get_first_empty_save_slot()
-	if active_save_slot != 0:
-		save_current_game()
+	active_save_slot = slot
+	save_current_game()
+	return true
 
 func load_game(slot: int) -> bool:
 	var save_data = load_save_slot(slot)
 	if save_data.is_empty():
 		return false
+	save_data = migrate_save_data(save_data)
 
 	active_save_slot = slot
 	selected_character_id = save_data.get("selected_character_id", "base")
 	current_floor = int(save_data.get("current_floor", 1))
-	level_data = save_data.get("level_data", {})
+	var saved_level_data = save_data.get("level_data", {})
+	level_data = saved_level_data if typeof(saved_level_data) == TYPE_DICTIONARY else {}
 	var regenerated_level = false
 	if not is_valid_level_data(level_data):
 		level_data = generate_level_data(current_floor, FLOOR_PATH_NORMAL)
@@ -185,23 +167,90 @@ func load_game(slot: int) -> bool:
 	else:
 		normalize_level_data()
 	current_floor = int(level_data.get("floor_number", current_floor))
-	player_grid_pos = save_data.get("player_grid_pos", level_data.get("start_position", START_GRID_POS).duplicate())
+	player_grid_pos = normalize_grid_position(save_data.get("player_grid_pos", {}), level_data.get("start_position", START_GRID_POS))
 	if regenerated_level or not is_grid_position_walkable(level_data, player_grid_pos):
 		player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
-	player_stats = save_data.get("player_stats", get_default_player_stats())
-	gold = int(save_data.get("gold", 0))
+	player_stats = normalize_player_stats(save_data.get("player_stats", {}), selected_character_id)
+	gold = normalize_gold(save_data.get("gold", 0))
 	inventory = normalize_inventory(save_data.get("inventory", []))
 	equipment = normalize_equipment(save_data.get("equipment", {}))
 	current_enemy_id = ""
-	defeated_enemies = save_data.get("defeated_enemies", {})
+	defeated_enemies = normalize_defeated_enemies(save_data.get("defeated_enemies", {}))
 	return true
+
+func migrate_save_data(save_data: Dictionary) -> Dictionary:
+	var migrated = save_data.duplicate(true)
+	var version = str(migrated.get("version", "0.1.0"))
+	if version.is_empty():
+		version = "0.1.0"
+
+	if version in ["0.1.0", "0.1.1"]:
+		migrated = migrate_pre_0_1_2_save_data(migrated)
+
+	migrated["version"] = SAVE_VERSION
+	return migrated
+
+func migrate_pre_0_1_2_save_data(save_data: Dictionary) -> Dictionary:
+	var migrated = save_data.duplicate(true)
+	if not migrated.has("inventory"):
+		migrated["inventory"] = []
+	if not migrated.has("equipment"):
+		migrated["equipment"] = DEFAULT_EQUIPMENT.duplicate()
+	if not migrated.has("gold"):
+		migrated["gold"] = 0
+	if not migrated.has("defeated_enemies"):
+		migrated["defeated_enemies"] = {}
+	return migrated
+
+func normalize_player_stats(saved_stats: Variant, character_id: String) -> Dictionary:
+	var base_stats = get_character_stats(character_id)
+	if typeof(saved_stats) != TYPE_DICTIONARY:
+		return base_stats
+
+	var max_hp = max(1, int(saved_stats.get("max_hp", base_stats["max_hp"])))
+	return {
+		"hp": clampi(int(saved_stats.get("hp", base_stats["hp"])), 0, max_hp),
+		"max_hp": max_hp,
+		"attack": max(0, int(saved_stats.get("attack", base_stats["attack"]))),
+		"defense": max(0, int(saved_stats.get("defense", base_stats["defense"]))),
+		"name": str(saved_stats.get("name", base_stats["name"])),
+		"passives": normalize_passives(saved_stats.get("passives", base_stats["passives"]))
+	}
+
+func normalize_passives(saved_passives: Variant) -> Array:
+	if typeof(saved_passives) != TYPE_ARRAY:
+		return []
+	return saved_passives.duplicate(true)
+
+func normalize_grid_position(saved_grid_position: Variant, fallback_position: Variant) -> Dictionary:
+	var fallback = fallback_position if typeof(fallback_position) == TYPE_DICTIONARY else START_GRID_POS
+	if typeof(saved_grid_position) != TYPE_DICTIONARY:
+		return fallback.duplicate()
+
+	return {
+		"x": int(saved_grid_position.get("x", fallback.get("x", START_GRID_POS["x"]))),
+		"y": int(saved_grid_position.get("y", fallback.get("y", START_GRID_POS["y"])))
+	}
+
+func normalize_gold(saved_gold: Variant) -> int:
+	return max(0, int(saved_gold))
+
+func normalize_defeated_enemies(saved_defeated_enemies: Variant) -> Dictionary:
+	var normalized = {}
+	if typeof(saved_defeated_enemies) != TYPE_DICTIONARY:
+		return normalized
+
+	for enemy_id in saved_defeated_enemies.keys():
+		if bool(saved_defeated_enemies[enemy_id]):
+			normalized[str(enemy_id)] = true
+	return normalized
 
 func save_current_game() -> void:
 	if active_save_slot == 0:
 		return
 
 	var save_data = {
-		"version": "0.1.0",
+		"version": SAVE_VERSION,
 		"selected_character_id": selected_character_id,
 		"current_floor": current_floor,
 		"level_data": level_data,
@@ -214,48 +263,30 @@ func save_current_game() -> void:
 		"updated_at": Time.get_datetime_string_from_system(false, true)
 	}
 
-	var file = FileAccess.open(get_save_path(active_save_slot), FileAccess.WRITE)
-	if file == null:
-		return
-	file.store_string(JSON.stringify(save_data, "\t"))
+	SaveManager.write_save_slot(active_save_slot, save_data)
 
 func load_save_slot(slot: int) -> Dictionary:
-	if not save_slot_exists(slot):
-		return {}
-
-	var file = FileAccess.open(get_save_path(slot), FileAccess.READ)
-	if file == null:
-		return {}
-
-	var parsed = JSON.parse_string(file.get_as_text())
-	if typeof(parsed) != TYPE_DICTIONARY:
-		return {}
-
-	return parsed
+	return SaveManager.load_save_slot(slot)
 
 func delete_save_slot(slot: int) -> void:
-	if not save_slot_exists(slot):
-		return
-	var save_dir = DirAccess.open("user://")
-	if save_dir != null:
-		save_dir.remove(get_save_file_name(slot))
+	SaveManager.delete_save_slot(slot)
 	if active_save_slot == slot:
 		active_save_slot = 0
 
 func save_slot_exists(slot: int) -> bool:
-	return FileAccess.file_exists(get_save_path(slot))
+	return SaveManager.save_slot_exists(slot)
 
 func get_first_empty_save_slot() -> int:
-	for slot in range(1, SAVE_SLOT_COUNT + 1):
-		if not save_slot_exists(slot):
-			return slot
-	return 0
+	return SaveManager.get_first_empty_save_slot()
+
+func has_empty_save_slot() -> bool:
+	return SaveManager.has_empty_save_slot()
 
 func get_save_path(slot: int) -> String:
-	return "user://%s" % get_save_file_name(slot)
+	return SaveManager.get_save_path(slot)
 
 func get_save_file_name(slot: int) -> String:
-	return "save_slot_%d.json" % slot
+	return SaveManager.get_save_file_name(slot)
 
 func ensure_level_data() -> void:
 	if not is_valid_level_data(level_data):
@@ -265,7 +296,14 @@ func ensure_level_data() -> void:
 		normalize_level_data()
 
 func is_valid_level_data(data: Dictionary) -> bool:
-	return data.has("floor_tiles") and data.has("walls") and data.has("rooms") and data.has("enemies")
+	return data.has("floor_tiles") \
+		and typeof(data.get("floor_tiles")) == TYPE_ARRAY \
+		and data.has("walls") \
+		and typeof(data.get("walls")) == TYPE_ARRAY \
+		and data.has("rooms") \
+		and typeof(data.get("rooms")) == TYPE_ARRAY \
+		and data.has("enemies") \
+		and typeof(data.get("enemies")) == TYPE_ARRAY
 
 func is_grid_position_walkable(data: Dictionary, grid_position: Dictionary) -> bool:
 	var key = get_grid_key(int(grid_position.get("x", START_GRID_POS["x"])), int(grid_position.get("y", START_GRID_POS["y"])))
@@ -301,18 +339,18 @@ func get_enemy_stats(enemy_type: String) -> Dictionary:
 	}
 
 func get_current_enemy_battle_stats() -> Dictionary:
-	var enemy_data = get_enemy_data(current_enemy_id)
-	if enemy_data.is_empty():
+	var enemy_encounter = get_enemy_encounter_data(current_enemy_id)
+	if enemy_encounter.is_empty():
 		return get_enemy_stats(DEFAULT_ENEMY_TYPE)
 
-	var stats = get_enemy_stats(str(enemy_data.get("type", DEFAULT_ENEMY_TYPE)))
-	stats.merge(enemy_data, true)
+	var stats = get_enemy_stats(str(enemy_encounter.get("type", DEFAULT_ENEMY_TYPE)))
+	stats.merge(enemy_encounter, true)
 	stats.erase("id")
 	stats.erase("x")
 	stats.erase("y")
 	return {
 		"type": str(stats.get("type", DEFAULT_ENEMY_TYPE)),
-		"name": str(stats.get("name", "Goblin")),
+		"name": str(stats.get("name", "Гоблин")),
 		"hp": int(stats.get("hp", stats.get("max_hp", 30))),
 		"max_hp": int(stats.get("max_hp", 30)),
 		"attack": int(stats.get("attack", 5)),
@@ -320,10 +358,10 @@ func get_current_enemy_battle_stats() -> Dictionary:
 		"features": stats.get("features", []).duplicate(true)
 	}
 
-func get_enemy_data(enemy_id: String) -> Dictionary:
-	for enemy_data in level_data.get("enemies", []):
-		if enemy_data.get("id", "") == enemy_id:
-			return enemy_data
+func get_enemy_encounter_data(enemy_id: String) -> Dictionary:
+	for enemy_encounter in level_data.get("enemies", []):
+		if enemy_encounter.get("id", "") == enemy_id:
+			return enemy_encounter
 	return {}
 
 func normalize_level_data() -> void:
@@ -331,29 +369,31 @@ func normalize_level_data() -> void:
 	level_data["path"] = str(level_data.get("path", FLOOR_PATH_NORMAL))
 
 	var normalized_enemies = []
-	for enemy_data in level_data.get("enemies", []):
-		normalized_enemies.append(normalize_enemy_data(enemy_data))
+	for enemy_encounter in level_data.get("enemies", []):
+		normalized_enemies.append(normalize_enemy_encounter_data(enemy_encounter))
 	level_data["enemies"] = normalized_enemies
 
 	if not level_data.has("exits"):
-		level_data["exits"] = generate_exit_data(level_data.get("rooms", []), int(level_data["floor_number"]), str(level_data["path"]))
+		level_data["exits"] = DungeonGenerator.generate_exit_data(level_data.get("rooms", []), int(level_data["floor_number"]), str(level_data["path"]))
 	if not level_data.has("chest"):
-		level_data["chest"] = generate_chest_data(level_data.get("exits", []), int(level_data["floor_number"]), str(level_data["path"]), level_data.get("rooms", []))
+		level_data["chest"] = DungeonGenerator.generate_chest_data(level_data.get("exits", []), int(level_data["floor_number"]), str(level_data["path"]), level_data.get("rooms", []))
+	if not level_data.has("fountain"):
+		level_data["fountain"] = DungeonGenerator.generate_fountain_data(level_data.get("rooms", []), int(level_data["floor_number"]))
 
-func normalize_enemy_data(enemy_data: Dictionary) -> Dictionary:
-	var enemy_type = str(enemy_data.get("type", DEFAULT_ENEMY_TYPE))
+func normalize_enemy_encounter_data(enemy_encounter: Dictionary) -> Dictionary:
+	var enemy_type = str(enemy_encounter.get("type", DEFAULT_ENEMY_TYPE))
 	var stats = scale_enemy_stats(
 		get_enemy_stats(enemy_type),
 		int(level_data.get("floor_number", current_floor)),
 		str(level_data.get("path", FLOOR_PATH_NORMAL))
 	)
 	return {
-		"id": str(enemy_data.get("id", "")),
+		"id": str(enemy_encounter.get("id", "")),
 		"type": stats["type"],
 		"name": stats["name"],
-		"x": int(enemy_data.get("x", START_GRID_POS["x"])),
-		"y": int(enemy_data.get("y", START_GRID_POS["y"])),
-		"hp": min(int(enemy_data.get("hp", stats["hp"])), int(stats["max_hp"])),
+		"x": int(enemy_encounter.get("x", START_GRID_POS["x"])),
+		"y": int(enemy_encounter.get("y", START_GRID_POS["y"])),
+		"hp": min(int(enemy_encounter.get("hp", stats["hp"])), int(stats["max_hp"])),
 		"max_hp": stats["max_hp"],
 		"attack": stats["attack"],
 		"defense": stats["defense"],
@@ -361,83 +401,28 @@ func normalize_enemy_data(enemy_data: Dictionary) -> Dictionary:
 	}
 
 func normalize_inventory(saved_inventory: Variant) -> Array:
-	var normalized = []
-	if typeof(saved_inventory) != TYPE_ARRAY:
-		return normalized
-
-	for item_id in saved_inventory:
-		var item_id_string = str(item_id)
-		if ITEM_DEFINITIONS.has(item_id_string) and normalized.size() < MAX_INVENTORY_SIZE:
-			normalized.append(item_id_string)
-	return normalized
+	return ItemDatabase.normalize_inventory(saved_inventory)
 
 func normalize_equipment(saved_equipment: Variant) -> Dictionary:
-	var normalized = DEFAULT_EQUIPMENT.duplicate()
-	if typeof(saved_equipment) != TYPE_DICTIONARY:
-		return normalized
-
-	for slot in normalized.keys():
-		var item_id = str(saved_equipment.get(slot, ""))
-		if item_id.is_empty():
-			continue
-		var item = get_item_definition(item_id)
-		if not item.is_empty() and item.get("slot", "") == slot:
-			normalized[slot] = item_id
-	return normalized
+	return ItemDatabase.normalize_equipment(saved_equipment)
 
 func get_item_definition(item_id: String) -> Dictionary:
-	return ITEM_DEFINITIONS.get(item_id, {})
+	return ItemDatabase.get_item_definition(item_id)
 
 func get_item_name(item_id: String) -> String:
-	var item = get_item_definition(item_id)
-	if item.is_empty():
-		return "Неизвестный предмет"
-	return str(item.get("name", item_id))
+	return ItemDatabase.get_item_name(item_id)
 
 func get_item_stat_bonuses(item_id: String) -> Dictionary:
-	var item = get_item_definition(item_id)
-	var bonuses = item.get("bonuses", {})
-	if typeof(bonuses) != TYPE_DICTIONARY:
-		return {}
-	return bonuses
+	return ItemDatabase.get_item_stat_bonuses(item_id)
 
 func get_equipment_stat_bonuses() -> Dictionary:
-	var total_bonuses = {
-		"max_hp": 0,
-		"attack": 0,
-		"defense": 0
-	}
-
-	for item_id in equipment.values():
-		var item_id_string = str(item_id)
-		if item_id_string.is_empty():
-			continue
-
-		var item_bonuses = get_item_stat_bonuses(item_id_string)
-		total_bonuses["max_hp"] += int(item_bonuses.get("max_hp", 0))
-		total_bonuses["attack"] += int(item_bonuses.get("attack", 0))
-		total_bonuses["defense"] += int(item_bonuses.get("defense", 0))
-
-	return total_bonuses
+	return ItemDatabase.get_equipment_stat_bonuses(equipment)
 
 func get_item_bonus_text(item_id: String) -> String:
-	var bonuses = get_item_stat_bonuses(item_id)
-	var parts = []
-	var attack_bonus = int(bonuses.get("attack", 0))
-	var defense_bonus = int(bonuses.get("defense", 0))
-	var max_hp_bonus = int(bonuses.get("max_hp", 0))
-
-	if attack_bonus != 0:
-		parts.append("+%d атака" % attack_bonus)
-	if defense_bonus != 0:
-		parts.append("+%d защита" % defense_bonus)
-	if max_hp_bonus != 0:
-		parts.append("+%d HP" % max_hp_bonus)
-
-	return ", ".join(parts)
+	return ItemDatabase.get_item_bonus_text(item_id)
 
 func add_inventory_item(item_id: String, should_save: bool = false) -> bool:
-	if not ITEM_DEFINITIONS.has(item_id) or inventory.size() >= MAX_INVENTORY_SIZE:
+	if not ItemDatabase.can_add_inventory_item(inventory, item_id):
 		return false
 
 	inventory.append(item_id)
@@ -473,6 +458,20 @@ func equip_inventory_item(inventory_index: int, should_save: bool = true) -> boo
 		save_current_game()
 	return true
 
+func unequip_equipment_slot(slot: String, should_save: bool = true) -> bool:
+	if not equipment.has(slot):
+		return false
+
+	var item_id = str(equipment.get(slot, ""))
+	if item_id.is_empty() or not ItemDatabase.can_add_inventory_item(inventory, item_id):
+		return false
+
+	equipment[slot] = ""
+	inventory.append(item_id)
+	if should_save:
+		save_current_game()
+	return true
+
 func discard_inventory_item(inventory_index: int, should_save: bool = true) -> bool:
 	if inventory_index < 0 or inventory_index >= inventory.size():
 		return false
@@ -483,20 +482,16 @@ func discard_inventory_item(inventory_index: int, should_save: bool = true) -> b
 	return true
 
 func grant_current_enemy_reward() -> Dictionary:
-	var enemy_data = get_enemy_data(current_enemy_id)
-	var enemy_type = str(enemy_data.get("type", DEFAULT_ENEMY_TYPE))
+	var enemy_encounter = get_enemy_encounter_data(current_enemy_id)
+	var enemy_type = str(enemy_encounter.get("type", DEFAULT_ENEMY_TYPE))
 	var path_type = str(level_data.get("path", FLOOR_PATH_NORMAL))
-	var loot_table = LOOT_TABLES.get(enemy_type, LOOT_TABLES[DEFAULT_ENEMY_TYPE])
+	var loot_table = ItemDatabase.get_loot_table(enemy_type, DEFAULT_ENEMY_TYPE)
 	var gold_amount = randi_range(int(loot_table["gold_min"]), int(loot_table["gold_max"]))
 	if path_type == FLOOR_PATH_ELITE:
 		gold_amount = ceili(gold_amount * 1.5)
 	add_gold(gold_amount)
 
-	var reward = {
-		"gold": gold_amount,
-		"item_id": "",
-		"item_added": false
-	}
+	var reward = ResultData.make_reward_result(gold_amount)
 
 	var item_chance = float(loot_table.get("item_chance", 0.0))
 	if path_type == FLOOR_PATH_ELITE:
@@ -504,37 +499,32 @@ func grant_current_enemy_reward() -> Dictionary:
 	if randf() > item_chance:
 		return reward
 
-	var item_id = get_random_loot_item_id(loot_table.get("items", []))
+	var item_id = ItemDatabase.get_random_loot_item_id(loot_table.get("items", []))
 	if item_id.is_empty():
 		return reward
 
-	reward["item_id"] = item_id
-	reward["item_added"] = add_inventory_item(item_id)
+	reward[ResultData.KEY_ITEM_ID] = item_id
+	reward[ResultData.KEY_ITEM_ADDED] = add_inventory_item(item_id)
 	return reward
 
-func get_random_loot_item_id(items: Array) -> String:
-	if items.is_empty():
-		return ""
-	return str(items[randi_range(0, items.size() - 1)])
-
 func is_level_cleared() -> bool:
-	for enemy_data in level_data.get("enemies", []):
-		if not is_enemy_defeated(str(enemy_data.get("id", ""))):
+	for enemy_encounter in level_data.get("enemies", []):
+		if not is_enemy_defeated(str(enemy_encounter.get("id", ""))):
 			return false
 	return true
 
 func get_remaining_enemy_count() -> int:
 	var remaining_count = 0
-	for enemy_data in level_data.get("enemies", []):
-		if not is_enemy_defeated(str(enemy_data.get("id", ""))):
+	for enemy_encounter in level_data.get("enemies", []):
+		if not is_enemy_defeated(str(enemy_encounter.get("id", ""))):
 			remaining_count += 1
 	return remaining_count
 
 func get_current_path_label() -> String:
 	var path_type = str(level_data.get("path", FLOOR_PATH_NORMAL))
 	if path_type == FLOOR_PATH_ELITE:
-		return "Elite"
-	return "Normal"
+		return "Элитный"
+	return "Обычный"
 
 func get_visible_exits() -> Array:
 	if not is_level_cleared():
@@ -550,24 +540,49 @@ func get_visible_chest() -> Dictionary:
 		return {}
 	return chest_data
 
-func open_level_chest() -> String:
+func get_visible_fountain() -> Dictionary:
+	var fountain_data = level_data.get("fountain", {})
+	if fountain_data.is_empty() or bool(fountain_data.get("is_used", false)):
+		return {}
+	return fountain_data
+
+func use_level_fountain() -> int:
+	var fountain_data = get_visible_fountain()
+	if fountain_data.is_empty():
+		return 0
+
+	var stats = get_player_battle_stats()
+	var previous_hp = int(stats.get("hp", 0))
+	var max_hp = int(stats.get("max_hp", 1))
+	var heal_amount = ceili(max_hp * float(fountain_data.get("heal_percent", 0.25)))
+	stats["hp"] = min(max_hp, previous_hp + heal_amount)
+	set_player_battle_stats(stats)
+
+	level_data["fountain"]["is_used"] = true
+	save_current_game()
+	return int(stats["hp"]) - previous_hp
+
+func open_level_chest() -> Dictionary:
+	var reward = ResultData.make_reward_result()
+
 	var chest_data = get_visible_chest()
 	if chest_data.is_empty():
-		return ""
+		return reward
 
 	var gold_amount = int(chest_data.get("gold", 0))
 	var item_id = str(chest_data.get("item_id", ""))
-	if item_id.is_empty():
-		return ""
+	reward[ResultData.KEY_GOLD] = gold_amount
+	reward[ResultData.KEY_ITEM_ID] = item_id
 
 	if gold_amount > 0:
 		add_gold(gold_amount)
-	if not add_inventory_item(item_id):
-		return ""
+	if not item_id.is_empty():
+		reward[ResultData.KEY_ITEM_ADDED] = add_inventory_item(item_id)
 
 	level_data["chest"]["is_opened"] = true
 	save_current_game()
-	return item_id
+	reward[ResultData.KEY_OPENED] = true
+	return reward
 
 func get_visible_chest_gold() -> int:
 	var chest_data = get_visible_chest()
@@ -620,235 +635,20 @@ func set_player_battle_stats(stats: Dictionary, should_save: bool = false) -> vo
 		"max_hp": base_max_hp,
 		"attack": int(stats.get("attack", 10)) - int(equipment_bonuses.get("attack", 0)),
 		"defense": int(stats.get("defense", 2)) - int(equipment_bonuses.get("defense", 0)),
-		"name": str(stats.get("name", "Player")),
+		"name": str(stats.get("name", "Герой")),
 		"passives": stats.get("passives", []).duplicate(true)
 	}
 	if should_save:
 		save_current_game()
 
 func generate_level_data(floor_number: int = 1, path_type: String = FLOOR_PATH_NORMAL) -> Dictionary:
-	var rng = RandomNumberGenerator.new()
-	rng.randomize()
-	var level_seed = rng.randi()
-	rng.seed = level_seed
+	return DungeonGenerator.generate_level_data(
+		floor_number,
+		path_type,
+		Callable(self, "build_enemy_encounter_data")
+	)
 
-	var rooms = generate_rooms(rng)
-	var floor_positions = {}
-
-	for room in rooms:
-		carve_room(room, floor_positions)
-
-	for index in range(rooms.size() - 1):
-		connect_rooms(rooms[index], rooms[index + 1], floor_positions, rng)
-
-	var floor_tiles = positions_to_array(floor_positions)
-	var walls = build_wall_tiles(floor_positions)
-	var start_position = get_room_center(rooms[0])
-	var exits = generate_exit_data(rooms, floor_number, path_type)
-	var chest = generate_chest_data(exits, floor_number, path_type, rooms)
-	var enemies = generate_enemy_data(rooms, floor_positions, start_position, exits, rng, floor_number, path_type)
-
-	return {
-		"seed": level_seed,
-		"floor_number": floor_number,
-		"path": path_type,
-		"width": ROOM_WIDTH,
-		"height": ROOM_HEIGHT,
-		"start_position": start_position,
-		"rooms": rooms,
-		"floor_tiles": floor_tiles,
-		"walls": walls,
-		"enemies": enemies,
-		"exits": exits,
-		"chest": chest
-	}
-
-func generate_rooms(rng: RandomNumberGenerator) -> Array:
-	var rooms = []
-	var target_room_count = rng.randi_range(MIN_ROOM_COUNT, MAX_ROOM_COUNT)
-	var attempts = 0
-
-	while rooms.size() < target_room_count and attempts < 120:
-		attempts += 1
-		var width = rng.randi_range(MIN_ROOM_SIZE, MAX_ROOM_SIZE)
-		var height = rng.randi_range(MIN_ROOM_SIZE, MAX_ROOM_SIZE)
-		var x = rng.randi_range(1, ROOM_WIDTH - width - 1)
-		var y = rng.randi_range(1, ROOM_HEIGHT - height - 1)
-		var room = {"x": x, "y": y, "width": width, "height": height}
-
-		if not does_room_overlap(room, rooms):
-			rooms.append(room)
-
-	if rooms.is_empty():
-		rooms.append({"x": 5, "y": 5, "width": 5, "height": 5})
-
-	return rooms
-
-func does_room_overlap(room: Dictionary, rooms: Array) -> bool:
-	for other in rooms:
-		if room["x"] - 1 < other["x"] + other["width"] + 1 \
-				and room["x"] + room["width"] + 1 > other["x"] - 1 \
-				and room["y"] - 1 < other["y"] + other["height"] + 1 \
-				and room["y"] + room["height"] + 1 > other["y"] - 1:
-			return true
-	return false
-
-func carve_room(room: Dictionary, floor_positions: Dictionary) -> void:
-	for y in range(room["y"], room["y"] + room["height"]):
-		for x in range(room["x"], room["x"] + room["width"]):
-			floor_positions[get_grid_key(x, y)] = {"x": x, "y": y}
-
-func connect_rooms(from_room: Dictionary, to_room: Dictionary, floor_positions: Dictionary, rng: RandomNumberGenerator) -> void:
-	var from_center = get_room_center(from_room)
-	var to_center = get_room_center(to_room)
-
-	if rng.randi_range(0, 1) == 0:
-		carve_horizontal_corridor(from_center["x"], to_center["x"], from_center["y"], floor_positions)
-		carve_vertical_corridor(from_center["y"], to_center["y"], to_center["x"], floor_positions)
-	else:
-		carve_vertical_corridor(from_center["y"], to_center["y"], from_center["x"], floor_positions)
-		carve_horizontal_corridor(from_center["x"], to_center["x"], to_center["y"], floor_positions)
-
-func carve_horizontal_corridor(from_x: int, to_x: int, y: int, floor_positions: Dictionary) -> void:
-	for x in range(min(from_x, to_x), max(from_x, to_x) + 1):
-		floor_positions[get_grid_key(x, y)] = {"x": x, "y": y}
-
-func carve_vertical_corridor(from_y: int, to_y: int, x: int, floor_positions: Dictionary) -> void:
-	for y in range(min(from_y, to_y), max(from_y, to_y) + 1):
-		floor_positions[get_grid_key(x, y)] = {"x": x, "y": y}
-
-func get_room_center(room: Dictionary) -> Dictionary:
-	return {
-		"x": int(room["x"] + floori(room["width"] / 2.0)),
-		"y": int(room["y"] + floori(room["height"] / 2.0))
-	}
-
-func positions_to_array(positions: Dictionary) -> Array:
-	var result = []
-	for position in positions.values():
-		result.append(position)
-	return result
-
-func build_wall_tiles(floor_positions: Dictionary) -> Array:
-	var walls = []
-	for y in range(ROOM_HEIGHT):
-		for x in range(ROOM_WIDTH):
-			if not floor_positions.has(get_grid_key(x, y)):
-				walls.append({"x": x, "y": y})
-	return walls
-
-func generate_exit_data(rooms: Array, floor_number: int, path_type: String) -> Array:
-	if floor_number >= MAX_FLOOR or rooms.is_empty():
-		return []
-
-	var exit_room = rooms[rooms.size() - 1]
-	var exit_center = get_room_center(exit_room)
-	if floor_number == 2:
-		return [
-			build_exit_data("normal_exit", "Обычный путь", FLOOR_PATH_NORMAL, floor_number + 1, exit_center),
-			build_exit_data("elite_exit", "Сложный путь", FLOOR_PATH_ELITE, floor_number + 1, get_room_position_with_offset(exit_room, Vector2i(1, 0)))
-		]
-
-	return [
-		build_exit_data("floor_exit", "Спуск", path_type, floor_number + 1, exit_center)
-	]
-
-func build_exit_data(exit_id: String, label: String, path_type: String, to_floor: int, grid_position: Dictionary) -> Dictionary:
-	return {
-		"id": exit_id,
-		"label": label,
-		"path": path_type,
-		"to_floor": to_floor,
-		"x": grid_position["x"],
-		"y": grid_position["y"]
-	}
-
-func generate_chest_data(exits: Array, floor_number: int, path_type: String, rooms: Array = []) -> Dictionary:
-	if exits.is_empty() and (floor_number < MAX_FLOOR or rooms.is_empty()):
-		return {}
-
-	var chest_position = {}
-	if exits.is_empty():
-		chest_position = get_room_center(rooms[rooms.size() - 1])
-	else:
-		var first_exit = exits[0]
-		chest_position = get_nearby_walkable_position({"x": first_exit["x"], "y": first_exit["y"]})
-	return {
-		"id": "floor_%d_chest" % floor_number,
-		"x": chest_position["x"],
-		"y": chest_position["y"],
-		"item_id": get_floor_chest_reward(floor_number, path_type),
-		"gold": get_floor_chest_gold(floor_number, path_type),
-		"is_opened": false
-	}
-
-func get_floor_chest_reward(floor_number: int, path_type: String) -> String:
-	if path_type == FLOOR_PATH_ELITE:
-		return "leather_chestpiece"
-	if floor_number >= 2:
-		return "leather_chestpiece"
-	return "wooden_sword"
-
-func get_floor_chest_gold(floor_number: int, path_type: String) -> int:
-	var min_gold = 15 + (floor_number - 1) * 5
-	var max_gold = 25 + (floor_number - 1) * 5
-	if path_type == FLOOR_PATH_ELITE:
-		min_gold += 10
-		max_gold += 15
-	return randi_range(min_gold, max_gold)
-
-func get_room_position_with_offset(room: Dictionary, offset: Vector2i) -> Dictionary:
-	var center = get_room_center(room)
-	return {
-		"x": clampi(center["x"] + offset.x, room["x"], room["x"] + room["width"] - 1),
-		"y": clampi(center["y"] + offset.y, room["y"], room["y"] + room["height"] - 1)
-	}
-
-func get_nearby_walkable_position(position_data: Dictionary) -> Dictionary:
-	return {
-		"x": clampi(int(position_data["x"]) - 1, 0, ROOM_WIDTH - 1),
-		"y": int(position_data["y"])
-	}
-
-func generate_enemy_data(
-	rooms: Array,
-	floor_positions: Dictionary,
-	start_position: Dictionary,
-	exits: Array,
-	rng: RandomNumberGenerator,
-	floor_number: int,
-	path_type: String
-) -> Array:
-	var enemies = []
-	var occupied = {
-		get_grid_key(start_position["x"], start_position["y"]): true
-	}
-	for exit_data in exits:
-		occupied[get_grid_key(exit_data["x"], exit_data["y"])] = true
-	var chest_data = generate_chest_data(exits, floor_number, path_type, rooms)
-	if not chest_data.is_empty():
-		occupied[get_grid_key(chest_data["x"], chest_data["y"])] = true
-
-	var enemy_rooms = rooms.slice(1)
-	if not exits.is_empty() and rooms.size() > 2:
-		enemy_rooms = rooms.slice(1, rooms.size() - 1)
-	var enemy_count = get_floor_enemy_count(floor_number, path_type)
-
-	for index in range(enemy_count):
-		var enemy_pos = get_random_floor_position(rng, floor_positions, occupied, start_position, enemy_rooms)
-		occupied[get_grid_key(enemy_pos["x"], enemy_pos["y"])] = true
-		var enemy_type = DUNGEON_ENEMY_TYPES[index % DUNGEON_ENEMY_TYPES.size()]
-		enemies.append(build_enemy_data("level_enemy_%02d" % [index + 1], enemy_type, enemy_pos, floor_number, path_type))
-
-	return enemies
-
-func get_floor_enemy_count(floor_number: int, path_type: String) -> int:
-	var count = ENEMY_COUNT + max(0, floor_number - 1)
-	if path_type == FLOOR_PATH_ELITE:
-		count += 1
-	return count
-
-func build_enemy_data(enemy_id: String, enemy_type: String, enemy_pos: Dictionary, floor_number: int = 1, path_type: String = FLOOR_PATH_NORMAL) -> Dictionary:
+func build_enemy_encounter_data(enemy_id: String, enemy_type: String, enemy_pos: Dictionary, floor_number: int = 1, path_type: String = FLOOR_PATH_NORMAL) -> Dictionary:
 	var stats = get_enemy_stats(enemy_type)
 	var scaled_stats = scale_enemy_stats(stats, floor_number, path_type)
 	return {
@@ -874,41 +674,6 @@ func scale_enemy_stats(stats: Dictionary, floor_number: int, path_type: String) 
 	scaled_stats["defense"] = int(stats["defense"]) + elite_bonus
 	return scaled_stats
 
-func get_random_floor_position(
-	rng: RandomNumberGenerator,
-	floor_positions: Dictionary,
-	occupied: Dictionary,
-	start_position: Dictionary,
-	preferred_rooms: Array
-) -> Dictionary:
-	for _attempt in range(200):
-		var candidate = get_random_room_position(rng, preferred_rooms)
-		if is_valid_spawn_position(candidate, occupied, start_position):
-			return candidate
-
-	var floor_tiles = floor_positions.values()
-	for _attempt in range(200):
-		var candidate = floor_tiles[rng.randi_range(0, floor_tiles.size() - 1)]
-		if is_valid_spawn_position(candidate, occupied, start_position):
-			return candidate
-
-	return start_position
-
-func get_random_room_position(rng: RandomNumberGenerator, rooms: Array) -> Dictionary:
-	if rooms.is_empty():
-		return START_GRID_POS
-
-	var room = rooms[rng.randi_range(0, rooms.size() - 1)]
-	return {
-		"x": rng.randi_range(room["x"], room["x"] + room["width"] - 1),
-		"y": rng.randi_range(room["y"], room["y"] + room["height"] - 1)
-	}
-
-func is_valid_spawn_position(candidate: Dictionary, occupied: Dictionary, start_position: Dictionary) -> bool:
-	var key = get_grid_key(candidate["x"], candidate["y"])
-	var distance = abs(candidate["x"] - start_position["x"]) + abs(candidate["y"] - start_position["y"])
-	return not occupied.has(key) and distance >= 4
-
 func get_grid_key(x: int, y: int) -> String:
 	return "%d:%d" % [x, y]
 
@@ -927,3 +692,8 @@ func is_enemy_defeated(enemy_id: String) -> bool:
 
 func clear_current_battle() -> void:
 	current_enemy_id = ""
+
+func handle_player_defeat() -> void:
+	current_enemy_id = ""
+	if active_save_slot != 0:
+		delete_save_slot(active_save_slot)

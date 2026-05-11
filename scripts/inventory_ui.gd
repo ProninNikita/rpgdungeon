@@ -4,6 +4,7 @@ signal inventory_toggled(is_open: bool)
 
 const ITEM_ACTION_EQUIP = 0
 const ITEM_ACTION_DISCARD = 1
+const ITEM_ACTION_UNEQUIP = 2
 
 @onready var close_button = $Window/Header/CloseButton
 @onready var tabs = $Window/Tabs
@@ -21,6 +22,7 @@ const ITEM_ACTION_DISCARD = 1
 var inventory_slots: Array = []
 var item_action_menu: PopupMenu
 var selected_inventory_index: int = -1
+var selected_equipment_slot: String = ""
 
 func _ready() -> void:
 	tabs.set_tab_title(0, "Снаряжение")
@@ -29,6 +31,7 @@ func _ready() -> void:
 	create_item_action_menu()
 	collect_inventory_slots()
 	connect_inventory_slots()
+	connect_equipment_slots()
 	hide()
 
 func toggle() -> void:
@@ -49,7 +52,7 @@ func close() -> void:
 func refresh_character_info() -> void:
 	var player_stats = GameState.get_player_battle_stats()
 	var equipment_bonuses = GameState.get_equipment_stat_bonuses()
-	character_label.text = "Персонаж: %s" % player_stats.get("name", "Player")
+	character_label.text = "Персонаж: %s" % player_stats.get("name", "Герой")
 	gold_label.text = "Золото: %d" % GameState.gold
 	hp_label.text = "HP: %d/%d" % [int(player_stats.get("hp", 100)), int(player_stats.get("max_hp", 100))]
 	attack_label.text = get_stat_text("Атака", int(player_stats.get("attack", 10)), int(equipment_bonuses.get("attack", 0)))
@@ -73,6 +76,11 @@ func connect_inventory_slots() -> void:
 	for index in range(inventory_slots.size()):
 		var slot_button = inventory_slots[index]
 		slot_button.pressed.connect(_on_inventory_slot_pressed.bind(index))
+
+func connect_equipment_slots() -> void:
+	weapon_slot.pressed.connect(_on_equipment_slot_pressed.bind("weapon"))
+	armor_slot.pressed.connect(_on_equipment_slot_pressed.bind("armor"))
+	accessory_slot.pressed.connect(_on_equipment_slot_pressed.bind("accessory"))
 
 func create_item_action_menu() -> void:
 	item_action_menu = PopupMenu.new()
@@ -114,22 +122,38 @@ func _on_inventory_slot_pressed(index: int) -> void:
 		return
 
 	selected_inventory_index = index
+	selected_equipment_slot = ""
 	item_action_menu.clear()
 	item_action_menu.add_item("Надеть", ITEM_ACTION_EQUIP)
 	item_action_menu.add_item("Выбросить", ITEM_ACTION_DISCARD)
 	item_action_menu.position = Vector2i(get_viewport().get_mouse_position())
 	item_action_menu.popup()
 
+func _on_equipment_slot_pressed(slot: String) -> void:
+	var item_id = str(GameState.equipment.get(slot, ""))
+	if item_id.is_empty():
+		return
+
+	selected_inventory_index = -1
+	selected_equipment_slot = slot
+	item_action_menu.clear()
+	item_action_menu.add_item("Снять", ITEM_ACTION_UNEQUIP)
+	item_action_menu.position = Vector2i(get_viewport().get_mouse_position())
+	item_action_menu.popup()
+
 func _on_item_action_selected(action_id: int) -> void:
-	if selected_inventory_index < 0:
+	if selected_inventory_index < 0 and selected_equipment_slot.is_empty():
 		return
 
 	if action_id == ITEM_ACTION_EQUIP:
 		GameState.equip_inventory_item(selected_inventory_index)
 	elif action_id == ITEM_ACTION_DISCARD:
 		GameState.discard_inventory_item(selected_inventory_index)
+	elif action_id == ITEM_ACTION_UNEQUIP:
+		GameState.unequip_equipment_slot(selected_equipment_slot)
 
 	selected_inventory_index = -1
+	selected_equipment_slot = ""
 	refresh_character_info()
 
 func get_passives_text(passives: Array) -> String:
@@ -142,8 +166,13 @@ func get_passives_text(passives: Array) -> String:
 	return "\n\n".join(descriptions)
 
 func format_passive(passive: Dictionary) -> String:
+	if passive.get("id", "") == "resolve":
+		var trigger_percent = int(round(float(passive.get("trigger_hp_percent", 0.0)) * 100.0))
+		var heal_percent = int(round(float(passive.get("heal_percent", 0.0)) * 100.0))
+		return "%s\nОдин раз за бой лечит на %d%% HP, когда здоровье падает до %d%% или ниже." % [passive.get("name", "Стойкость"), heal_percent, trigger_percent]
+
 	if passive.get("id", "") == "vampirism":
 		var heal_percent = int(round(float(passive.get("heal_percent", 0.0)) * 100.0))
 		return "%s\nЛечит на %d%% от нанесённого урона после атаки." % [passive.get("name", "Vampirism"), heal_percent]
 
-	return "%s" % passive.get("name", "Unknown passive")
+	return "%s" % passive.get("name", "Неизвестная пассивка")

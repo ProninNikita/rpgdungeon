@@ -8,6 +8,20 @@ The project uses semantic versioning while it is in prototype stage:
 
 ## [Unreleased]
 
+### Added
+- Added the base character's Resolve passive, which heals once per battle at low HP.
+- Added higher-tier weapon, armor, and accessory items to enemy loot and floor chests.
+- Added a once-per-floor healing fountain room interaction.
+- Added explicit save slot overwrite controls when starting a new game with full save slots.
+- Added scene-load and full-run verification checks, plus a manual full-run checklist.
+- Added `RPG_SAVE_DIR` support for isolated save-file verification runs.
+
+### Changed
+- New games now require a free save slot and show a clear message when all slots are occupied.
+- Player defeat now ends the active run by removing its save slot.
+- Localized battle, map, inventory, and save slot UI text to Russian.
+- Centralized scene paths, reward result keys, and enemy encounter naming for cleaner project structure.
+
 ## [0.1.2] - 2026-05-07
 
 ### Added

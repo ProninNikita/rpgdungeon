@@ -1,17 +1,11 @@
 extends CharacterBody2D
 
+const ScenePaths = preload("res://scripts/scene_paths.gd")
 const TILE_SIZE = 32
-const SPEED = 200
 const HALF_TILE = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 
 var grid_pos: Vector2i = Vector2i(8, 8)
 var input_locked: bool = false
-
-# Player stats
-var max_hp: int = 100
-var current_hp: int = 100
-var attack_power: int = 10
-var defense: int = 2
 
 func _ready():
 	# Выравниваем позицию на сетку
@@ -79,18 +73,4 @@ func start_battle(enemy):
 	input_locked = true
 	GameState.start_battle(enemy.enemy_id, grid_pos)
 	await get_tree().create_timer(0.3).timeout
-	get_tree().change_scene_to_file("res://scenes/combat/battle.tscn")
-
-func take_damage(damage: int) -> void:
-	var actual_damage = max(1, damage - defense)
-	current_hp -= actual_damage
-	print("Player takes %d damage! HP: %d/%d" % [actual_damage, current_hp, max_hp])
-
-func heal(amount: int) -> void:
-	current_hp = min(current_hp + amount, max_hp)
-	print("Player healed for %d! HP: %d/%d" % [amount, current_hp, max_hp])
-
-func attack() -> int:
-	# Рандомный урон в диапазоне
-	var damage = attack_power + randi_range(-2, 2)
-	return damage
+	get_tree().change_scene_to_file(ScenePaths.BATTLE)

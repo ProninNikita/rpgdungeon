@@ -1,9 +1,10 @@
 extends Node2D
 
+const ScenePaths = preload("res://scripts/scene_paths.gd")
+const ResultData = preload("res://scripts/result_data.gd")
 const ROOM_WIDTH = 16
 const ROOM_HEIGHT = 16
 const TILE_SIZE = 32
-const ENEMY_SCENE = preload("res://scenes/combat/enemy.tscn")
 
 var floor_positions: Dictionary = {}
 var wall_positions: Dictionary = {}
@@ -11,6 +12,8 @@ var floors_container: Node2D
 var walls_container: Node2D
 var enemies_container: Node2D
 var interactables_container: Node2D
+var message_sequence: int = 0
+var enemy_scene: PackedScene = load(ScenePaths.ENEMY)
 
 @onready var player = $Player
 @onready var inventory_ui = $UI/InventoryUI
@@ -67,7 +70,7 @@ func build_level() -> void:
 	build_interactables()
 	update_hud()
 	if GameState.is_level_cleared():
-		show_map_message("Floor cleared. Chest and exits are available.")
+		show_map_message("Этаж зачищен. Сундук и выходы доступны.")
 
 func place_player() -> void:
 	if player != null and player.has_method("set_grid_position"):
@@ -96,24 +99,24 @@ func build_walls() -> void:
 		walls_container.add_child(wall)
 
 func spawn_enemies() -> void:
-	for enemy_data in GameState.level_data.get("enemies", []):
-		var enemy_id = enemy_data["id"]
+	for enemy_encounter in GameState.level_data.get("enemies", []):
+		var enemy_id = enemy_encounter["id"]
 		if GameState.is_enemy_defeated(enemy_id):
 			continue
 
-		var enemy = ENEMY_SCENE.instantiate()
-		var grid_pos = Vector2i(enemy_data["x"], enemy_data["y"])
+		var enemy = enemy_scene.instantiate()
+		var grid_pos = Vector2i(enemy_encounter["x"], enemy_encounter["y"])
 		enemy.name = "Enemy_%s" % enemy_id
 		enemy.enemy_id = enemy_id
 		enemy.grid_pos = grid_pos
-		enemy.name_label = enemy_data.get("name", "Goblin")
-		enemy.max_hp = int(enemy_data.get("max_hp", enemy.max_hp))
-		enemy.current_hp = int(enemy_data.get("hp", enemy.max_hp))
-		enemy.attack_power = int(enemy_data.get("attack", enemy.attack_power))
-		enemy.defense = int(enemy_data.get("defense", enemy.defense))
+		enemy.name_label = enemy_encounter.get("name", "Гоблин")
 		enemies_container.add_child(enemy)
 
 func build_interactables() -> void:
+	var fountain_data = GameState.get_visible_fountain()
+	if not fountain_data.is_empty():
+		create_map_marker(Vector2i(fountain_data["x"], fountain_data["y"]), Color(0.2, 0.55, 0.9, 1), "F")
+
 	var chest_data = GameState.get_visible_chest()
 	if not chest_data.is_empty():
 		create_map_marker(Vector2i(chest_data["x"], chest_data["y"]), Color(0.85, 0.58, 0.16, 1), "C")
@@ -140,19 +143,25 @@ func create_map_marker(grid_pos: Vector2i, color: Color, label_text: String) -> 
 	interactables_container.add_child(label)
 
 func handle_player_interaction(grid_pos: Vector2i) -> bool:
+	var fountain_data = GameState.get_visible_fountain()
+	if not fountain_data.is_empty() and Vector2i(fountain_data["x"], fountain_data["y"]) == grid_pos:
+		var healed_amount = GameState.use_level_fountain()
+		show_map_message("Фонтан: восстановлено %d HP" % healed_amount)
+		rebuild_interactables()
+		return true
+
 	var chest_data = GameState.get_visible_chest()
 	if not chest_data.is_empty() and Vector2i(chest_data["x"], chest_data["y"]) == grid_pos:
-		var gold_amount = GameState.get_visible_chest_gold()
-		var item_id = GameState.open_level_chest()
-		if not item_id.is_empty():
-			show_map_message("Chest: %s and %d gold" % [GameState.get_item_name(item_id), gold_amount])
+		var reward = GameState.open_level_chest()
+		if bool(reward.get(ResultData.KEY_OPENED, false)):
+			show_map_message(get_chest_reward_message(reward))
 			rebuild_interactables()
 			update_hud()
 		return true
 
 	for exit_data in GameState.get_visible_exits():
 		if Vector2i(exit_data["x"], exit_data["y"]) == grid_pos:
-			show_map_message("Entering %s." % str(exit_data.get("label", "next floor")))
+			show_map_message("Переход: %s." % str(exit_data.get("label", "следующий этаж")))
 			if GameState.advance_to_next_floor(str(exit_data.get("id", ""))):
 				get_tree().change_scene_to_file(GameState.MAIN_LEVEL_PATH)
 			return true
@@ -165,14 +174,31 @@ func rebuild_interactables() -> void:
 	build_interactables()
 
 func update_hud() -> void:
-	floor_label.text = "Floor: %d/%d" % [GameState.current_floor, GameState.MAX_FLOOR]
-	path_label.text = "Path: %s" % GameState.get_current_path_label()
-	gold_label.text = "Gold: %d" % GameState.gold
-	enemies_label.text = "Enemies left: %d" % GameState.get_remaining_enemy_count()
+	floor_label.text = "Этаж: %d/%d" % [GameState.current_floor, GameState.MAX_FLOOR]
+	path_label.text = "Путь: %s" % GameState.get_current_path_label()
+	gold_label.text = "Золото: %d" % GameState.gold
+	enemies_label.text = "Врагов осталось: %d" % GameState.get_remaining_enemy_count()
 
-func show_map_message(message: String) -> void:
+func show_map_message(message: String, duration: float = 3.0) -> void:
+	message_sequence += 1
+	var current_message = message_sequence
 	message_label.text = message
 	message_panel.show()
+	await get_tree().create_timer(duration).timeout
+	if current_message == message_sequence:
+		message_panel.hide()
+
+func get_chest_reward_message(reward: Dictionary) -> String:
+	var gold_amount = int(reward.get(ResultData.KEY_GOLD, 0))
+	var item_id = str(reward.get(ResultData.KEY_ITEM_ID, ""))
+	if item_id.is_empty():
+		return "Сундук: %d золота" % gold_amount
+
+	var item_name = GameState.get_item_name(item_id)
+	if bool(reward.get(ResultData.KEY_ITEM_ADDED, false)):
+		return "Сундук: %s и %d золота" % [item_name, gold_amount]
+
+	return "Сундук: %d золота. Инвентарь полон, %s потерян." % [gold_amount, item_name]
 
 func is_grid_position_blocked(grid_pos: Vector2i) -> bool:
 	return not floor_positions.has(get_grid_key(grid_pos))

@@ -91,7 +91,7 @@ vertical_alignment = 1
 [node name="CharacterLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
 custom_minimum_size = Vector2(268, 28)
 layout_mode = 2
-text = "Персонаж: Player"
+text = "Персонаж: Герой"
 vertical_alignment = 1
 
 [node name="StatsTitle" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]

@@ -1,9 +1,13 @@
 extends Node2D
 
+const ScenePaths = preload("res://scripts/scene_paths.gd")
+const ResultData = preload("res://scripts/result_data.gd")
+
 var player_stats: Dictionary
 var enemy_stats: Dictionary
 var is_battle_active: bool = true
 var battle_log: Array = []
+var used_passives: Dictionary = {}
 
 @onready var player_hp_label = $PlayerHP
 @onready var enemy_hp_label = $EnemyHP
@@ -13,19 +17,19 @@ var battle_log: Array = []
 @onready var enemy_hp_bar = $EnemyHPBar
 
 const ATTACK_SPEED = 1.5
-const DEATH_SCREEN_PATH = "res://scenes/ui/death_screen.tscn"
-const MAIN_LEVEL_PATH = "res://scenes/levels/main_level.tscn"
+const DEATH_SCREEN_PATH = ScenePaths.DEATH_SCREEN
+const MAIN_LEVEL_PATH = ScenePaths.MAIN_LEVEL
 
 func _ready():
 	player_stats = GameState.get_player_battle_stats()
 	enemy_stats = GameState.get_current_enemy_battle_stats()
 	
 	update_ui()
-	add_log("Battle started!")
-	add_log("Player vs " + enemy_stats["name"])
+	add_log("Бой начался.")
+	add_log("%s против %s" % [player_stats["name"], enemy_stats["name"]])
 	var traits_text = get_enemy_traits_text()
 	if not traits_text.is_empty():
-		add_log("Enemy traits: " + traits_text)
+		add_log("Особенности врага: " + traits_text)
 	
 	await get_tree().create_timer(1.5).timeout
 	battle_loop()
@@ -42,14 +46,14 @@ func battle_loop():
 
 func player_attack():
 	if should_enemy_evade():
-		add_log("%s dodges the attack!" % enemy_stats["name"])
+		add_log("%s уклоняется от атаки." % enemy_stats["name"])
 		update_ui()
 		return
 
 	var damage = calculate_damage(player_stats["attack"], enemy_stats["defense"])
 	enemy_stats["hp"] = max(0, enemy_stats["hp"] - damage)
 	
-	add_log("%s attacks for %d damage!" % [player_stats["name"], damage])
+	add_log("%s наносит %d урона." % [player_stats["name"], damage])
 	apply_attack_passives(damage)
 	update_ui()
 	
@@ -71,7 +75,7 @@ func apply_vampirism(passive: Dictionary, damage: int) -> void:
 	player_stats["hp"] = min(int(player_stats["max_hp"]), previous_hp + heal_amount)
 	var actual_heal = int(player_stats["hp"]) - previous_hp
 	if actual_heal > 0:
-		add_log("%s heals for %d HP from Vampirism!" % [player_stats["name"], actual_heal])
+		add_log("%s восстанавливает %d HP от вампиризма." % [player_stats["name"], actual_heal])
 
 func enemy_attack():
 	var armor_pierce = get_enemy_armor_pierce()
@@ -80,9 +84,10 @@ func enemy_attack():
 	player_stats["hp"] = max(0, player_stats["hp"] - damage)
 	
 	if armor_pierce > 0:
-		add_log("%s pierces armor and attacks for %d damage!" % [enemy_stats["name"], damage])
+		add_log("%s пробивает броню и наносит %d урона." % [enemy_stats["name"], damage])
 	else:
-		add_log("%s attacks for %d damage!" % [enemy_stats["name"], damage])
+		add_log("%s наносит %d урона." % [enemy_stats["name"], damage])
+	apply_defensive_passives()
 	update_ui()
 	
 	if player_stats["hp"] <= 0:
@@ -90,6 +95,31 @@ func enemy_attack():
 		return
 
 	apply_enemy_regeneration()
+
+func apply_defensive_passives() -> void:
+	for passive in player_stats.get("passives", []):
+		if passive.get("id", "") == "resolve":
+			apply_resolve(passive)
+
+func apply_resolve(passive: Dictionary) -> void:
+	if bool(used_passives.get("resolve", false)):
+		return
+
+	var max_hp = int(player_stats["max_hp"])
+	var trigger_hp = ceili(max_hp * float(passive.get("trigger_hp_percent", 0.0)))
+	if int(player_stats["hp"]) > trigger_hp:
+		return
+
+	var heal_amount = ceili(max_hp * float(passive.get("heal_percent", 0.0)))
+	if heal_amount <= 0:
+		return
+
+	var previous_hp = int(player_stats["hp"])
+	player_stats["hp"] = min(max_hp, previous_hp + heal_amount)
+	var actual_heal = int(player_stats["hp"]) - previous_hp
+	used_passives["resolve"] = true
+	if actual_heal > 0:
+		add_log("%s проявляет стойкость и лечится на %d HP." % [player_stats["name"], actual_heal])
 
 func calculate_damage(attack: int, defense: int) -> int:
 	var base_damage = attack + randi_range(-2, 2)
@@ -123,7 +153,7 @@ func apply_enemy_regeneration() -> void:
 	enemy_stats["hp"] = min(int(enemy_stats["max_hp"]), previous_hp + heal_amount)
 	var actual_heal = int(enemy_stats["hp"]) - previous_hp
 	if actual_heal > 0:
-		add_log("%s regenerates %d HP!" % [enemy_stats["name"], actual_heal])
+		add_log("%s регенерирует %d HP." % [enemy_stats["name"], actual_heal])
 		update_ui()
 
 func get_enemy_feature(feature_id: String) -> Dictionary:
@@ -137,11 +167,11 @@ func get_enemy_traits_text() -> String:
 	for feature in enemy_stats.get("features", []):
 		var feature_id = feature.get("id", "")
 		if feature_id == "armor_pierce":
-			traits.append("armor pierce %d" % int(feature.get("pierce", 0)))
+			traits.append("пробитие брони %d" % int(feature.get("pierce", 0)))
 		elif feature_id == "evasion":
-			traits.append("%d%% evasion" % int(round(float(feature.get("chance", 0.0)) * 100.0)))
+			traits.append("уклонение %d%%" % int(round(float(feature.get("chance", 0.0)) * 100.0)))
 		elif feature_id == "regeneration":
-			traits.append("regenerates %d HP" % int(feature.get("heal", 0)))
+			traits.append("регенерация %d HP" % int(feature.get("heal", 0)))
 
 	return ", ".join(traits)
 
@@ -155,7 +185,7 @@ func update_log_display():
 	log_label.text = "\n".join(battle_log)
 
 func update_ui():
-	player_hp_label.text = "Player HP: %d/%d" % [int(player_stats["hp"]), int(player_stats["max_hp"])]
+	player_hp_label.text = "%s HP: %d/%d" % [player_stats["name"], int(player_stats["hp"]), int(player_stats["max_hp"])]
 	enemy_hp_label.text = "%s HP: %d/%d" % [enemy_stats["name"], int(enemy_stats["hp"]), int(enemy_stats["max_hp"])]
 	
 	var player_hp_percent = float(player_stats["hp"]) / player_stats["max_hp"]
@@ -169,15 +199,16 @@ func end_battle(result: String):
 	
 	if result == "win":
 		GameState.set_player_battle_stats(player_stats)
-		result_label.text = "VICTORY!"
+		result_label.text = "ПОБЕДА!"
 		result_label.modulate = Color.GREEN
-		add_log("Victory! You won!")
+		add_log("Победа.")
 		grant_drop_reward()
 		GameState.mark_current_enemy_defeated()
 	else:
-		result_label.text = "DEFEAT!"
+		result_label.text = "ПОРАЖЕНИЕ"
 		result_label.modulate = Color.RED
-		add_log("Defeat! You lost!")
+		add_log("Герой пал.")
+		GameState.handle_player_defeat()
 	
 	result_label.show()
 	
@@ -190,15 +221,15 @@ func end_battle(result: String):
 
 func grant_drop_reward() -> void:
 	var reward = GameState.grant_current_enemy_reward()
-	var gold_amount = int(reward.get("gold", 0))
+	var gold_amount = int(reward.get(ResultData.KEY_GOLD, 0))
 	if gold_amount > 0:
-		add_log("Received: %d gold" % gold_amount)
+		add_log("Получено золото: %d" % gold_amount)
 
-	var item_id = str(reward.get("item_id", ""))
+	var item_id = str(reward.get(ResultData.KEY_ITEM_ID, ""))
 	if item_id.is_empty():
 		return
 
-	if bool(reward.get("item_added", false)):
-		add_log("Found: %s" % GameState.get_item_name(item_id))
+	if bool(reward.get(ResultData.KEY_ITEM_ADDED, false)):
+		add_log("Найдено: %s" % GameState.get_item_name(item_id))
 	else:
-		add_log("Inventory full. %s was lost." % GameState.get_item_name(item_id))
+		add_log("Инвентарь полон. %s потерян." % GameState.get_item_name(item_id))

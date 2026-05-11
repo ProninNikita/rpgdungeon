@@ -22,10 +22,14 @@ color = Color(0.08, 0.09, 0.12, 1)
 
 [node name="Content" type="VBoxContainer" parent="."]
 layout_mode = 0
-offset_left = 232.0
-offset_top = 110.0
-offset_right = 792.0
-offset_bottom = 520.0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -250.0
+offset_right = 280.0
+offset_bottom = 250.0
 theme_override_constants/separation = 24
 
 [node name="Title" type="Label" parent="Content"]
@@ -56,6 +60,32 @@ layout_mode = 2
 text = "Вампир лечится на 5% от нанесённого урона"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="OverwriteSlots" type="HBoxContainer" parent="Content"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Slot1Button" type="Button" parent="Content/OverwriteSlots"]
+custom_minimum_size = Vector2(176, 42)
+layout_mode = 2
+text = "Перезаписать 1"
+
+[node name="Slot2Button" type="Button" parent="Content/OverwriteSlots"]
+custom_minimum_size = Vector2(176, 42)
+layout_mode = 2
+text = "Перезаписать 2"
+
+[node name="Slot3Button" type="Button" parent="Content/OverwriteSlots"]
+custom_minimum_size = Vector2(176, 42)
+layout_mode = 2
+text = "Перезаписать 3"
+
+[node name="ManageSavesButton" type="Button" parent="Content"]
+visible = false
+custom_minimum_size = Vector2(560, 42)
+layout_mode = 2
+text = "Управление сохранениями"
 
 [node name="BackButton" type="Button" parent="."]
 layout_mode = 0
