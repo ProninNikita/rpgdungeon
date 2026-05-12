@@ -45,6 +45,12 @@ func validate_generated_level(run_index: int, floor_number: int, path_type: Stri
 		assert_walkable(context, "fountain", fountain_data, floor_positions)
 		assert_unoccupied(context, "fountain", fountain_data, occupied)
 
+	var special_rooms = level_data.get("special_rooms", [])
+	assert_special_rooms(context, special_rooms)
+	for special_room in special_rooms:
+		assert_walkable(context, "special room %s" % str(special_room.get("type", "")), special_room, floor_positions)
+		assert_unoccupied(context, "special room %s" % str(special_room.get("type", "")), special_room, occupied)
+
 	for exit_data in level_data.get("exits", []):
 		assert_walkable(context, "exit", exit_data, floor_positions)
 		assert_unoccupied(context, "exit", exit_data, occupied)
@@ -82,6 +88,19 @@ func assert_unoccupied(context: String, label: String, position_data: Dictionary
 		failures.append("%s: %s overlaps %s at %s" % [context, label, occupied[key], key])
 	else:
 		occupied[key] = label
+
+func assert_special_rooms(context: String, special_rooms: Array) -> void:
+	if special_rooms.size() != DungeonGenerator.SPECIAL_ROOM_COUNT:
+		failures.append("%s: expected %d special rooms, got %d" % [context, DungeonGenerator.SPECIAL_ROOM_COUNT, special_rooms.size()])
+		return
+
+	var room_types = {}
+	for special_room in special_rooms:
+		room_types[str(special_room.get("type", ""))] = true
+	if not room_types.has(DungeonGenerator.ROOM_TYPE_ARTIFACT):
+		failures.append("%s: missing artifact room" % context)
+	if not room_types.has(DungeonGenerator.ROOM_TYPE_SHOP):
+		failures.append("%s: missing shop room" % context)
 
 func get_grid_key_from_data(position_data: Dictionary) -> String:
 	return "%d:%d" % [int(position_data.get("x", -1)), int(position_data.get("y", -1))]

@@ -9,7 +9,8 @@ const SCENES = [
 	{"label": "main level", "path": ScenePaths.MAIN_LEVEL},
 	{"label": "inventory", "path": "res://scenes/ui/inventory_ui.tscn"},
 	{"label": "battle", "path": ScenePaths.BATTLE},
-	{"label": "death screen", "path": ScenePaths.DEATH_SCREEN}
+	{"label": "death screen", "path": ScenePaths.DEATH_SCREEN},
+	{"label": "result screen", "path": ScenePaths.RESULT_SCREEN}
 ]
 
 var failures: Array = []

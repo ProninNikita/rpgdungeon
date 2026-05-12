@@ -12,6 +12,9 @@ const START_GRID_POS = {"x": 8, "y": 8}
 const DUNGEON_ENEMY_TYPES = ["goblin", "skeleton", "bat", "slime"]
 const FLOOR_PATH_NORMAL = "normal"
 const FLOOR_PATH_ELITE = "elite"
+const ROOM_TYPE_ARTIFACT = "artifact"
+const ROOM_TYPE_SHOP = "shop"
+const SPECIAL_ROOM_COUNT = 2
 
 static func generate_level_data(
 	floor_number: int,
@@ -24,6 +27,7 @@ static func generate_level_data(
 	rng.seed = level_seed
 
 	var rooms = generate_rooms(rng)
+	var special_rooms = assign_special_rooms(rooms)
 	var floor_positions = {}
 
 	for room in rooms:
@@ -38,7 +42,7 @@ static func generate_level_data(
 	var exits = generate_exit_data(rooms, floor_number, path_type)
 	var chest = generate_chest_data(exits, floor_number, path_type, rooms)
 	var fountain = generate_fountain_data(rooms, floor_number)
-	var enemies = generate_enemy_encounter_data(rooms, floor_positions, start_position, exits, chest, fountain, rng, floor_number, path_type, enemy_encounter_builder)
+	var enemies = generate_enemy_encounter_data(rooms, floor_positions, start_position, exits, chest, fountain, special_rooms, rng, floor_number, path_type, enemy_encounter_builder)
 
 	return {
 		"seed": level_seed,
@@ -53,15 +57,16 @@ static func generate_level_data(
 		"enemies": enemies,
 		"exits": exits,
 		"chest": chest,
-		"fountain": fountain
+		"fountain": fountain,
+		"special_rooms": special_rooms
 	}
 
 static func generate_rooms(rng: RandomNumberGenerator) -> Array:
 	var rooms = []
-	var target_room_count = rng.randi_range(MIN_ROOM_COUNT, MAX_ROOM_COUNT)
+	var target_room_count = rng.randi_range(MIN_ROOM_COUNT, MAX_ROOM_COUNT) + SPECIAL_ROOM_COUNT
 	var attempts = 0
 
-	while rooms.size() < target_room_count and attempts < 120:
+	while rooms.size() < target_room_count and attempts < 180:
 		attempts += 1
 		var width = rng.randi_range(MIN_ROOM_SIZE, MAX_ROOM_SIZE)
 		var height = rng.randi_range(MIN_ROOM_SIZE, MAX_ROOM_SIZE)
@@ -77,6 +82,60 @@ static func generate_rooms(rng: RandomNumberGenerator) -> Array:
 
 	return rooms
 
+static func assign_special_rooms(rooms: Array) -> Array:
+	if rooms.size() < 3:
+		return []
+
+	var candidate_indexes = []
+	for index in range(1, rooms.size() - 1):
+		candidate_indexes.append(index)
+	if candidate_indexes.size() < SPECIAL_ROOM_COUNT:
+		for index in range(1, rooms.size()):
+			if not candidate_indexes.has(index):
+				candidate_indexes.append(index)
+
+	if candidate_indexes.size() < SPECIAL_ROOM_COUNT:
+		return []
+
+	var artifact_room_index = candidate_indexes[0]
+	var shop_room_index = candidate_indexes[1]
+	rooms[artifact_room_index]["room_type"] = ROOM_TYPE_ARTIFACT
+	rooms[shop_room_index]["room_type"] = ROOM_TYPE_SHOP
+	return build_special_room_data(rooms)
+
+static func build_special_room_data(rooms: Array) -> Array:
+	var special_rooms = []
+	for index in range(rooms.size()):
+		var room = rooms[index]
+		var room_type = str(room.get("room_type", ""))
+		if room_type.is_empty():
+			continue
+		var room_center = get_room_center(room)
+		special_rooms.append({
+			"id": "%s_room_%02d" % [room_type, index],
+			"type": room_type,
+			"label": get_special_room_label(room_type),
+			"marker": get_special_room_marker(room_type),
+			"room_index": index,
+			"x": room_center["x"],
+			"y": room_center["y"]
+		})
+	return special_rooms
+
+static func get_special_room_label(room_type: String) -> String:
+	if room_type == ROOM_TYPE_ARTIFACT:
+		return "Артефактная комната"
+	if room_type == ROOM_TYPE_SHOP:
+		return "Магазин"
+	return "Особая комната"
+
+static func get_special_room_marker(room_type: String) -> String:
+	if room_type == ROOM_TYPE_ARTIFACT:
+		return "A"
+	if room_type == ROOM_TYPE_SHOP:
+		return "$"
+	return "?"
+
 static func does_room_overlap(room: Dictionary, rooms: Array) -> bool:
 	for other in rooms:
 		if room["x"] - 1 < other["x"] + other["width"] + 1 \
@@ -89,7 +148,11 @@ static func does_room_overlap(room: Dictionary, rooms: Array) -> bool:
 static func carve_room(room: Dictionary, floor_positions: Dictionary) -> void:
 	for y in range(room["y"], room["y"] + room["height"]):
 		for x in range(room["x"], room["x"] + room["width"]):
-			floor_positions[get_grid_key(x, y)] = {"x": x, "y": y}
+			var floor_data = {"x": x, "y": y}
+			var room_type = str(room.get("room_type", ""))
+			if not room_type.is_empty():
+				floor_data["room_type"] = room_type
+			floor_positions[get_grid_key(x, y)] = floor_data
 
 static func connect_rooms(from_room: Dictionary, to_room: Dictionary, floor_positions: Dictionary, rng: RandomNumberGenerator) -> void:
 	var from_center = get_room_center(from_room)
@@ -225,6 +288,7 @@ static func generate_enemy_encounter_data(
 	exits: Array,
 	chest_data: Dictionary,
 	fountain_data: Dictionary,
+	special_rooms: Array,
 	rng: RandomNumberGenerator,
 	floor_number: int,
 	path_type: String,
@@ -240,10 +304,20 @@ static func generate_enemy_encounter_data(
 		occupied[get_grid_key(chest_data["x"], chest_data["y"])] = true
 	if not fountain_data.is_empty():
 		occupied[get_grid_key(fountain_data["x"], fountain_data["y"])] = true
+	var special_room_indexes = {}
+	for special_room in special_rooms:
+		var room_index = int(special_room.get("room_index", -1))
+		if room_index >= 0:
+			special_room_indexes[room_index] = true
+			occupy_room_tiles(rooms[room_index], occupied)
 
-	var enemy_rooms = rooms.slice(1)
-	if not exits.is_empty() and rooms.size() > 2:
-		enemy_rooms = rooms.slice(1, rooms.size() - 1)
+	var enemy_rooms = []
+	for room_index in range(1, rooms.size()):
+		if special_room_indexes.has(room_index):
+			continue
+		if not exits.is_empty() and room_index == rooms.size() - 1:
+			continue
+		enemy_rooms.append(rooms[room_index])
 	var enemy_count = get_floor_enemy_count(floor_number, path_type)
 
 	for index in range(enemy_count):
@@ -255,6 +329,11 @@ static func generate_enemy_encounter_data(
 		enemies.append(enemy_encounter_builder.call("level_enemy_%02d" % [index + 1], enemy_type, enemy_pos, floor_number, path_type))
 
 	return enemies
+
+static func occupy_room_tiles(room: Dictionary, occupied: Dictionary) -> void:
+	for y in range(room["y"], room["y"] + room["height"]):
+		for x in range(room["x"], room["x"] + room["width"]):
+			occupied[get_grid_key(x, y)] = true
 
 static func get_floor_enemy_count(floor_number: int, path_type: String) -> int:
 	var count = ENEMY_COUNT + max(0, floor_number - 1)
@@ -271,6 +350,8 @@ static func get_random_floor_position(
 ) -> Dictionary:
 	for _attempt in range(200):
 		var candidate = get_random_room_position(rng, preferred_rooms)
+		if candidate.is_empty():
+			continue
 		if is_valid_spawn_position(candidate, occupied, start_position):
 			return candidate
 
@@ -290,7 +371,7 @@ static func get_random_floor_position(
 
 static func get_random_room_position(rng: RandomNumberGenerator, rooms: Array) -> Dictionary:
 	if rooms.is_empty():
-		return START_GRID_POS
+		return {}
 
 	var room = rooms[rng.randi_range(0, rooms.size() - 1)]
 	return {

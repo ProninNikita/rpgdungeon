@@ -6,22 +6,26 @@ The project should grow as a compact dungeon roguelite where battles stay automa
 
 ## High Priority
 
-- [ ] Extract shared combat resolution from `battle.gd` and `check_combat_balance.gd`.
-  - [ ] Create a `CombatResolver` or equivalent script that owns damage, evasion, armor pierce, regeneration, Resolve, and Vampirism rules.
-  - [ ] Make the battle scene use the shared resolver for live combat.
-  - [ ] Make the combat balance check use the same resolver instead of duplicating combat rules.
-- [ ] Continue splitting `GameState` into clearer runtime responsibilities.
-  - [ ] Move run-specific data and actions into a `RunState` style module.
-  - [ ] Move character definitions out of `GameState`.
-  - [ ] Move enemy definitions out of `GameState`.
-  - [ ] Keep `GameState` focused on orchestration and compatibility with the autoload.
-- [ ] Add a real run ending.
-  - [ ] Add a victory/result screen after clearing the final floor.
-  - [ ] Show basic run stats: character, path, gold, defeated enemies, equipped items.
-  - [ ] Decide whether successful runs should delete the save, archive the result, or return to menu.
+- [x] Extract shared combat resolution from `battle.gd` and `check_combat_balance.gd`.
+  - [x] Create a `CombatResolver` or equivalent script that owns damage, evasion, armor pierce, regeneration, Resolve, and Vampirism rules.
+  - [x] Make the battle scene use the shared resolver for live combat.
+  - [x] Make the combat balance check use the same resolver instead of duplicating combat rules.
+- [x] Continue splitting `GameState` into clearer runtime responsibilities.
+  - [x] Move run-specific data and actions into a `RunState` style module.
+  - [x] Move character definitions out of `GameState`.
+  - [x] Move enemy definitions out of `GameState`.
+  - [x] Keep `GameState` focused on orchestration and compatibility with the autoload.
+- [x] Add a real run ending.
+  - [x] Add a victory/result screen after clearing the final floor.
+  - [x] Show basic run stats: character, path, gold, defeated enemies, equipped items.
+  - [x] Decide whether successful runs should delete the save, archive the result, or return to menu.
 
 ## Run Depth
 
+- [x] Add placeholder artifact and shop rooms to every generated floor.
+  - [x] Generate one golden artifact room per floor.
+  - [x] Generate one brown shop room per floor.
+  - [x] Mark both rooms visually without adding artifacts, items, or consumables yet.
 - [ ] Add more meaningful room events between fights.
   - [ ] Add an altar event with a risk/reward choice.
   - [ ] Add a merchant or upgrade event.
@@ -102,6 +106,6 @@ The project should grow as a compact dungeon roguelite where battles stay automa
 - [ ] Expand automated checks as systems grow.
   - [ ] Add checks for new event generation.
   - [ ] Add checks for item effects once combat uses a shared resolver.
-  - [ ] Add checks for victory/result flow.
+  - [x] Add checks for victory/result flow.
   - [ ] Add save migration checks whenever `SAVE_VERSION` changes.
 - [ ] Keep `MANUAL_TEST_CHECKLIST.md` updated for visual passes.

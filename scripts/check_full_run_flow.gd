@@ -63,11 +63,13 @@ func validate_full_run_flow() -> void:
 	var active_slot = int(game_state.active_save_slot)
 	assert_true(active_slot != 0, "new game chooses an active save slot")
 	assert_true(SaveManager.save_slot_exists(active_slot), "new game writes a save slot")
+	assert_special_rooms("new game floor")
 
 	validate_enemy_fight()
 	validate_inventory_equip()
 	validate_floor_clear_and_chest()
 	validate_exit_paths()
+	validate_victory_completion(active_slot)
 	validate_death_deletes_save(active_slot)
 
 func validate_enemy_fight() -> void:
@@ -105,6 +107,7 @@ func validate_floor_clear_and_chest() -> void:
 	assert_true(bool(reward.get(ResultData.KEY_OPENED, false)), "cleared floor chest opens")
 	assert_true(int(game_state.gold) >= gold_before, "chest does not reduce gold")
 	assert_true(bool(game_state.level_data.get("chest", {}).get("is_opened", false)), "chest is marked opened")
+	assert_special_rooms("cleared floor")
 
 func validate_exit_paths() -> void:
 	prepare_cleared_floor(2, game_state.FLOOR_PATH_NORMAL)
@@ -120,6 +123,16 @@ func validate_exit_paths() -> void:
 	if not elite_exit.is_empty():
 		assert_true(game_state.advance_to_next_floor(str(elite_exit.get("id", ""))), "elite exit advances")
 		assert_true(str(game_state.level_data.get("path", "")) == game_state.FLOOR_PATH_ELITE, "elite exit switches to elite path")
+
+func validate_victory_completion(active_slot: int) -> void:
+	game_state.active_save_slot = active_slot
+	prepare_cleared_floor(game_state.MAX_FLOOR, game_state.FLOOR_PATH_ELITE)
+	var summary = game_state.complete_run()
+	assert_true(not summary.is_empty(), "completed run creates a result summary")
+	assert_true(str(summary.get("character", "")).length() > 0, "result summary has character")
+	assert_true(int(summary.get("gold", -1)) >= 0, "result summary has gold")
+	assert_true(int(summary.get("defeated_enemies", 0)) > 0, "result summary has defeated enemies")
+	assert_true(not SaveManager.save_slot_exists(active_slot), "completed run removes active save slot")
 
 func validate_death_deletes_save(active_slot: int) -> void:
 	game_state.active_save_slot = active_slot
@@ -148,6 +161,15 @@ func prepare_cleared_floor(floor_number: int, path_type: String) -> void:
 	game_state.player_grid_pos = game_state.level_data.get("start_position", game_state.START_GRID_POS).duplicate()
 	mark_current_floor_cleared()
 	game_state.save_current_game()
+
+func assert_special_rooms(context: String) -> void:
+	var special_rooms = game_state.level_data.get("special_rooms", [])
+	assert_true(special_rooms.size() == 2, "%s has two special rooms" % context)
+	var room_types = {}
+	for special_room in special_rooms:
+		room_types[str(special_room.get("type", ""))] = true
+	assert_true(room_types.has("artifact"), "%s has an artifact room" % context)
+	assert_true(room_types.has("shop"), "%s has a shop room" % context)
 
 func find_exit_by_path(path_type: String) -> Dictionary:
 	for exit_data in game_state.get_visible_exits():

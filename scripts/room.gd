@@ -2,6 +2,7 @@ extends Node2D
 
 const ScenePaths = preload("res://scripts/scene_paths.gd")
 const ResultData = preload("res://scripts/result_data.gd")
+const DungeonGenerator = preload("res://scripts/dungeon_generator.gd")
 const ROOM_WIDTH = 16
 const ROOM_HEIGHT = 16
 const TILE_SIZE = 32
@@ -27,6 +28,10 @@ var enemy_scene: PackedScene = load(ScenePaths.ENEMY)
 func _ready():
 	inventory_ui.inventory_toggled.connect(_on_inventory_toggled)
 	GameState.ensure_level_data()
+	if GameState.is_run_complete():
+		GameState.complete_run()
+		get_tree().call_deferred("change_scene_to_file", ScenePaths.RESULT_SCREEN)
+		return
 	build_level()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -84,8 +89,16 @@ func build_floors() -> void:
 		var floor_tile = ColorRect.new()
 		floor_tile.position = grid_pos * TILE_SIZE
 		floor_tile.size = Vector2(TILE_SIZE, TILE_SIZE)
-		floor_tile.color = Color(0.14, 0.14, 0.18, 1)
+		floor_tile.color = get_floor_tile_color(floor_data)
 		floors_container.add_child(floor_tile)
+
+func get_floor_tile_color(floor_data: Dictionary) -> Color:
+	var room_type = str(floor_data.get("room_type", ""))
+	if room_type == DungeonGenerator.ROOM_TYPE_ARTIFACT:
+		return Color(0.62, 0.46, 0.12, 1)
+	if room_type == DungeonGenerator.ROOM_TYPE_SHOP:
+		return Color(0.34, 0.21, 0.12, 1)
+	return Color(0.14, 0.14, 0.18, 1)
 
 func build_walls() -> void:
 	for wall_data in GameState.level_data.get("walls", []):
@@ -113,6 +126,9 @@ func spawn_enemies() -> void:
 		enemies_container.add_child(enemy)
 
 func build_interactables() -> void:
+	for special_room in GameState.get_visible_special_rooms():
+		create_special_room_marker(special_room)
+
 	var fountain_data = GameState.get_visible_fountain()
 	if not fountain_data.is_empty():
 		create_map_marker(Vector2i(fountain_data["x"], fountain_data["y"]), Color(0.2, 0.55, 0.9, 1), "F")
@@ -125,6 +141,17 @@ func build_interactables() -> void:
 		var label = "E" if exit_data.get("path", "") == "elite" else ">"
 		var color = Color(0.8, 0.25, 0.25, 1) if exit_data.get("path", "") == "elite" else Color(0.2, 0.7, 0.35, 1)
 		create_map_marker(Vector2i(exit_data["x"], exit_data["y"]), color, label)
+
+func create_special_room_marker(special_room: Dictionary) -> void:
+	var room_type = str(special_room.get("type", ""))
+	var color = Color(0.72, 0.52, 0.12, 1)
+	if room_type == DungeonGenerator.ROOM_TYPE_SHOP:
+		color = Color(0.45, 0.27, 0.13, 1)
+	create_map_marker(
+		Vector2i(int(special_room.get("x", 0)), int(special_room.get("y", 0))),
+		color,
+		str(special_room.get("marker", "?"))
+	)
 
 func create_map_marker(grid_pos: Vector2i, color: Color, label_text: String) -> void:
 	var marker = ColorRect.new()
@@ -143,6 +170,11 @@ func create_map_marker(grid_pos: Vector2i, color: Color, label_text: String) -> 
 	interactables_container.add_child(label)
 
 func handle_player_interaction(grid_pos: Vector2i) -> bool:
+	for special_room in GameState.get_visible_special_rooms():
+		if Vector2i(int(special_room.get("x", -1)), int(special_room.get("y", -1))) == grid_pos:
+			show_map_message(get_special_room_message(special_room))
+			return true
+
 	var fountain_data = GameState.get_visible_fountain()
 	if not fountain_data.is_empty() and Vector2i(fountain_data["x"], fountain_data["y"]) == grid_pos:
 		var healed_amount = GameState.use_level_fountain()
@@ -167,6 +199,14 @@ func handle_player_interaction(grid_pos: Vector2i) -> bool:
 			return true
 
 	return false
+
+func get_special_room_message(special_room: Dictionary) -> String:
+	var room_type = str(special_room.get("type", ""))
+	if room_type == DungeonGenerator.ROOM_TYPE_ARTIFACT:
+		return "Артефактная комната: артефакты появятся позже."
+	if room_type == DungeonGenerator.ROOM_TYPE_SHOP:
+		return "Магазин: товары и расходники появятся позже."
+	return "%s: пока пусто." % str(special_room.get("label", "Особая комната"))
 
 func rebuild_interactables() -> void:
 	for child in interactables_container.get_children():

@@ -1,5 +1,6 @@
 extends Node2D
 
+const CombatResolver = preload("res://scripts/combat_resolver.gd")
 const ScenePaths = preload("res://scripts/scene_paths.gd")
 const ResultData = preload("res://scripts/result_data.gd")
 
@@ -19,6 +20,7 @@ var used_passives: Dictionary = {}
 const ATTACK_SPEED = 1.5
 const DEATH_SCREEN_PATH = ScenePaths.DEATH_SCREEN
 const MAIN_LEVEL_PATH = ScenePaths.MAIN_LEVEL
+const RESULT_SCREEN_PATH = ScenePaths.RESULT_SCREEN
 
 func _ready():
 	player_stats = GameState.get_player_battle_stats()
@@ -45,122 +47,47 @@ func battle_loop():
 			await get_tree().create_timer(ATTACK_SPEED).timeout
 
 func player_attack():
-	if should_enemy_evade():
+	var result = CombatResolver.resolve_player_attack(player_stats, enemy_stats)
+	if bool(result.get(CombatResolver.RESULT_EVADED, false)):
 		add_log("%s уклоняется от атаки." % enemy_stats["name"])
 		update_ui()
 		return
 
-	var damage = calculate_damage(player_stats["attack"], enemy_stats["defense"])
-	enemy_stats["hp"] = max(0, enemy_stats["hp"] - damage)
-	
+	var damage = int(result.get(CombatResolver.RESULT_DAMAGE, 0))
 	add_log("%s наносит %d урона." % [player_stats["name"], damage])
-	apply_attack_passives(damage)
+	var heal_amount = int(result.get(CombatResolver.RESULT_HEAL, 0))
+	if heal_amount > 0:
+		add_log("%s восстанавливает %d HP от вампиризма." % [player_stats["name"], heal_amount])
 	update_ui()
 	
-	if enemy_stats["hp"] <= 0:
+	if bool(result.get(CombatResolver.RESULT_DEFEATED, false)):
 		end_battle("win")
 
-func apply_attack_passives(damage: int) -> void:
-	for passive in player_stats.get("passives", []):
-		if passive.get("id", "") == "vampirism":
-			apply_vampirism(passive, damage)
-
-func apply_vampirism(passive: Dictionary, damage: int) -> void:
-	var heal_percent = float(passive.get("heal_percent", 0.0))
-	var heal_amount = ceili(damage * heal_percent)
-	if heal_amount <= 0:
-		return
-
-	var previous_hp = int(player_stats["hp"])
-	player_stats["hp"] = min(int(player_stats["max_hp"]), previous_hp + heal_amount)
-	var actual_heal = int(player_stats["hp"]) - previous_hp
-	if actual_heal > 0:
-		add_log("%s восстанавливает %d HP от вампиризма." % [player_stats["name"], actual_heal])
-
 func enemy_attack():
-	var armor_pierce = get_enemy_armor_pierce()
-	var effective_defense = max(0, int(player_stats["defense"]) - armor_pierce)
-	var damage = calculate_damage(enemy_stats["attack"], effective_defense)
-	player_stats["hp"] = max(0, player_stats["hp"] - damage)
-	
+	var result = CombatResolver.resolve_enemy_attack(player_stats, enemy_stats, used_passives)
+	var armor_pierce = int(result.get(CombatResolver.RESULT_ARMOR_PIERCE, 0))
+	var damage = int(result.get(CombatResolver.RESULT_DAMAGE, 0))
 	if armor_pierce > 0:
 		add_log("%s пробивает броню и наносит %d урона." % [enemy_stats["name"], damage])
 	else:
 		add_log("%s наносит %d урона." % [enemy_stats["name"], damage])
-	apply_defensive_passives()
+
+	var heal_amount = int(result.get(CombatResolver.RESULT_HEAL, 0))
+	if heal_amount > 0:
+		add_log("%s проявляет стойкость и лечится на %d HP." % [player_stats["name"], heal_amount])
 	update_ui()
 	
-	if player_stats["hp"] <= 0:
+	if bool(result.get(CombatResolver.RESULT_DEFEATED, false)):
 		end_battle("lose")
 		return
 
-	apply_enemy_regeneration()
-
-func apply_defensive_passives() -> void:
-	for passive in player_stats.get("passives", []):
-		if passive.get("id", "") == "resolve":
-			apply_resolve(passive)
-
-func apply_resolve(passive: Dictionary) -> void:
-	if bool(used_passives.get("resolve", false)):
-		return
-
-	var max_hp = int(player_stats["max_hp"])
-	var trigger_hp = ceili(max_hp * float(passive.get("trigger_hp_percent", 0.0)))
-	if int(player_stats["hp"]) > trigger_hp:
-		return
-
-	var heal_amount = ceili(max_hp * float(passive.get("heal_percent", 0.0)))
-	if heal_amount <= 0:
-		return
-
-	var previous_hp = int(player_stats["hp"])
-	player_stats["hp"] = min(max_hp, previous_hp + heal_amount)
-	var actual_heal = int(player_stats["hp"]) - previous_hp
-	used_passives["resolve"] = true
-	if actual_heal > 0:
-		add_log("%s проявляет стойкость и лечится на %d HP." % [player_stats["name"], actual_heal])
-
-func calculate_damage(attack: int, defense: int) -> int:
-	var base_damage = attack + randi_range(-2, 2)
-	var actual_damage = max(1, base_damage - defense)
-	return actual_damage
-
-func should_enemy_evade() -> bool:
-	var evasion_feature = get_enemy_feature("evasion")
-	if evasion_feature.is_empty():
-		return false
-
-	return randf() < float(evasion_feature.get("chance", 0.0))
-
-func get_enemy_armor_pierce() -> int:
-	var armor_pierce_feature = get_enemy_feature("armor_pierce")
-	if armor_pierce_feature.is_empty():
-		return 0
-
-	return int(armor_pierce_feature.get("pierce", 0))
-
-func apply_enemy_regeneration() -> void:
-	var regeneration_feature = get_enemy_feature("regeneration")
-	if regeneration_feature.is_empty():
-		return
-
-	var heal_amount = int(regeneration_feature.get("heal", 0))
-	if heal_amount <= 0 or int(enemy_stats["hp"]) >= int(enemy_stats["max_hp"]):
-		return
-
-	var previous_hp = int(enemy_stats["hp"])
-	enemy_stats["hp"] = min(int(enemy_stats["max_hp"]), previous_hp + heal_amount)
-	var actual_heal = int(enemy_stats["hp"]) - previous_hp
-	if actual_heal > 0:
-		add_log("%s регенерирует %d HP." % [enemy_stats["name"], actual_heal])
+	var regeneration_amount = int(result.get(CombatResolver.RESULT_REGENERATION, 0))
+	if regeneration_amount > 0:
+		add_log("%s регенерирует %d HP." % [enemy_stats["name"], regeneration_amount])
 		update_ui()
 
 func get_enemy_feature(feature_id: String) -> Dictionary:
-	for feature in enemy_stats.get("features", []):
-		if feature.get("id", "") == feature_id:
-			return feature
-	return {}
+	return CombatResolver.get_enemy_feature(enemy_stats, feature_id)
 
 func get_enemy_traits_text() -> String:
 	var traits = []
@@ -196,6 +123,7 @@ func update_ui():
 
 func end_battle(result: String):
 	is_battle_active = false
+	var should_show_result_screen = false
 	
 	if result == "win":
 		GameState.set_player_battle_stats(player_stats)
@@ -204,6 +132,9 @@ func end_battle(result: String):
 		add_log("Победа.")
 		grant_drop_reward()
 		GameState.mark_current_enemy_defeated()
+		if GameState.is_run_complete():
+			GameState.complete_run()
+			should_show_result_screen = true
 	else:
 		result_label.text = "ПОРАЖЕНИЕ"
 		result_label.modulate = Color.RED
@@ -215,7 +146,10 @@ func end_battle(result: String):
 	await get_tree().create_timer(3.0).timeout
 	GameState.clear_current_battle()
 	if result == "win":
-		get_tree().change_scene_to_file(MAIN_LEVEL_PATH)
+		if should_show_result_screen:
+			get_tree().change_scene_to_file(RESULT_SCREEN_PATH)
+		else:
+			get_tree().change_scene_to_file(MAIN_LEVEL_PATH)
 	else:
 		get_tree().change_scene_to_file(DEATH_SCREEN_PATH)
 

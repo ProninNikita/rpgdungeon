@@ -1,14 +1,18 @@
 extends Node
 
 const SaveManager = preload("res://scripts/save_manager.gd")
+const RunState = preload("res://scripts/run_state.gd")
 const DungeonGenerator = preload("res://scripts/dungeon_generator.gd")
 const ItemDatabase = preload("res://scripts/item_database.gd")
+const CharacterDatabase = preload("res://scripts/character_database.gd")
+const EnemyDatabase = preload("res://scripts/enemy_database.gd")
 const ScenePaths = preload("res://scripts/scene_paths.gd")
 const ResultData = preload("res://scripts/result_data.gd")
 
 const SAVE_SLOT_COUNT = SaveManager.SAVE_SLOT_COUNT
 const SAVE_VERSION = "0.1.2"
 const MAIN_LEVEL_PATH = ScenePaths.MAIN_LEVEL
+const RESULT_SCREEN_PATH = ScenePaths.RESULT_SCREEN
 const ROOM_WIDTH = DungeonGenerator.ROOM_WIDTH
 const ROOM_HEIGHT = DungeonGenerator.ROOM_HEIGHT
 const MIN_ROOM_COUNT = DungeonGenerator.MIN_ROOM_COUNT
@@ -18,95 +22,14 @@ const MAX_ROOM_SIZE = DungeonGenerator.MAX_ROOM_SIZE
 const ENEMY_COUNT = DungeonGenerator.ENEMY_COUNT
 const MAX_FLOOR = DungeonGenerator.MAX_FLOOR
 const START_GRID_POS = DungeonGenerator.START_GRID_POS
-const DEFAULT_ENEMY_TYPE = "goblin"
+const DEFAULT_ENEMY_TYPE = EnemyDatabase.DEFAULT_ENEMY_TYPE
 const DUNGEON_ENEMY_TYPES = DungeonGenerator.DUNGEON_ENEMY_TYPES
 const FLOOR_PATH_NORMAL = DungeonGenerator.FLOOR_PATH_NORMAL
 const FLOOR_PATH_ELITE = DungeonGenerator.FLOOR_PATH_ELITE
 const MAX_INVENTORY_SIZE = ItemDatabase.MAX_INVENTORY_SIZE
 const LOOT_TABLES = ItemDatabase.LOOT_TABLES
-const CHARACTER_DEFINITIONS = {
-	"base": {
-		"name": "Герой",
-		"hp": 100,
-		"max_hp": 100,
-		"attack": 10,
-		"defense": 2,
-		"passives": [
-			{
-				"id": "resolve",
-				"name": "Стойкость",
-				"trigger_hp_percent": 0.30,
-				"heal_percent": 0.20
-			}
-		]
-	},
-	"vampire": {
-		"name": "Вампир",
-		"hp": 90,
-		"max_hp": 90,
-		"attack": 11,
-		"defense": 1,
-		"passives": [
-			{
-				"id": "vampirism",
-				"name": "Вампиризм",
-				"heal_percent": 0.05
-			}
-		]
-	}
-}
-const ENEMY_DEFINITIONS = {
-	"goblin": {
-		"name": "Гоблин",
-		"hp": 28,
-		"max_hp": 28,
-		"attack": 6,
-		"defense": 1,
-		"features": []
-	},
-	"skeleton": {
-		"name": "Скелет",
-		"hp": 24,
-		"max_hp": 24,
-		"attack": 10,
-		"defense": 0,
-		"features": [
-			{
-				"id": "armor_pierce",
-				"name": "Пробитие брони",
-				"pierce": 2
-			}
-		]
-	},
-	"bat": {
-		"name": "Летучая мышь",
-		"hp": 18,
-		"max_hp": 18,
-		"attack": 5,
-		"defense": 0,
-		"features": [
-			{
-				"id": "evasion",
-				"name": "Уклонение",
-				"chance": 0.25
-			}
-		]
-	},
-	"slime": {
-		"name": "Слизень",
-		"hp": 42,
-		"max_hp": 42,
-		"attack": 4,
-		"defense": 2,
-		"features": [
-			{
-				"id": "regeneration",
-				"name": "Регенерация",
-				"heal": 2
-			}
-		]
-	}
-}
+const CHARACTER_DEFINITIONS = CharacterDatabase.CHARACTER_DEFINITIONS
+const ENEMY_DEFINITIONS = EnemyDatabase.ENEMY_DEFINITIONS
 const ITEM_DEFINITIONS = ItemDatabase.ITEM_DEFINITIONS
 const DEFAULT_EQUIPMENT = ItemDatabase.DEFAULT_EQUIPMENT
 
@@ -121,6 +44,7 @@ var inventory: Array = []
 var equipment: Dictionary = DEFAULT_EQUIPMENT.duplicate()
 var current_enemy_id: String = ""
 var defeated_enemies: Dictionary = {}
+var completed_run_summary: Dictionary = {}
 
 func start_new_game(character_id: String) -> bool:
 	var save_slot = get_first_empty_save_slot()
@@ -138,6 +62,7 @@ func start_new_game_in_slot(character_id: String, slot: int, overwrite: bool = f
 	selected_character_id = character_id
 	current_enemy_id = ""
 	defeated_enemies.clear()
+	completed_run_summary.clear()
 	current_floor = 1
 	gold = 0
 	inventory.clear()
@@ -175,6 +100,7 @@ func load_game(slot: int) -> bool:
 	inventory = normalize_inventory(save_data.get("inventory", []))
 	equipment = normalize_equipment(save_data.get("equipment", {}))
 	current_enemy_id = ""
+	completed_run_summary.clear()
 	defeated_enemies = normalize_defeated_enemies(save_data.get("defeated_enemies", {}))
 	return true
 
@@ -249,19 +175,18 @@ func save_current_game() -> void:
 	if active_save_slot == 0:
 		return
 
-	var save_data = {
-		"version": SAVE_VERSION,
-		"selected_character_id": selected_character_id,
-		"current_floor": current_floor,
-		"level_data": level_data,
-		"player_grid_pos": player_grid_pos,
-		"player_stats": player_stats,
-		"gold": gold,
-		"inventory": inventory,
-		"equipment": equipment,
-		"defeated_enemies": defeated_enemies,
-		"updated_at": Time.get_datetime_string_from_system(false, true)
-	}
+	var save_data = RunState.make_save_data(
+		SAVE_VERSION,
+		selected_character_id,
+		current_floor,
+		level_data,
+		player_grid_pos,
+		player_stats,
+		gold,
+		inventory,
+		equipment,
+		defeated_enemies
+	)
 
 	SaveManager.write_save_slot(active_save_slot, save_data)
 
@@ -316,27 +241,10 @@ func get_default_player_stats() -> Dictionary:
 	return get_character_stats("base")
 
 func get_character_stats(character_id: String) -> Dictionary:
-	var definition = CHARACTER_DEFINITIONS.get(character_id, CHARACTER_DEFINITIONS["base"])
-	return {
-		"hp": int(definition["hp"]),
-		"max_hp": int(definition["max_hp"]),
-		"attack": int(definition["attack"]),
-		"defense": int(definition["defense"]),
-		"name": str(definition["name"]),
-		"passives": definition.get("passives", []).duplicate(true)
-	}
+	return CharacterDatabase.get_character_stats(character_id)
 
 func get_enemy_stats(enemy_type: String) -> Dictionary:
-	var definition = ENEMY_DEFINITIONS.get(enemy_type, ENEMY_DEFINITIONS[DEFAULT_ENEMY_TYPE])
-	return {
-		"type": enemy_type if ENEMY_DEFINITIONS.has(enemy_type) else DEFAULT_ENEMY_TYPE,
-		"name": str(definition["name"]),
-		"hp": int(definition["hp"]),
-		"max_hp": int(definition["max_hp"]),
-		"attack": int(definition["attack"]),
-		"defense": int(definition["defense"]),
-		"features": definition.get("features", []).duplicate(true)
-	}
+	return EnemyDatabase.get_enemy_stats(enemy_type)
 
 func get_current_enemy_battle_stats() -> Dictionary:
 	var enemy_encounter = get_enemy_encounter_data(current_enemy_id)
@@ -379,6 +287,8 @@ func normalize_level_data() -> void:
 		level_data["chest"] = DungeonGenerator.generate_chest_data(level_data.get("exits", []), int(level_data["floor_number"]), str(level_data["path"]), level_data.get("rooms", []))
 	if not level_data.has("fountain"):
 		level_data["fountain"] = DungeonGenerator.generate_fountain_data(level_data.get("rooms", []), int(level_data["floor_number"]))
+	if not level_data.has("special_rooms") or typeof(level_data.get("special_rooms")) != TYPE_ARRAY:
+		level_data["special_rooms"] = DungeonGenerator.build_special_room_data(level_data.get("rooms", []))
 
 func normalize_enemy_encounter_data(enemy_encounter: Dictionary) -> Dictionary:
 	var enemy_type = str(enemy_encounter.get("type", DEFAULT_ENEMY_TYPE))
@@ -546,6 +456,9 @@ func get_visible_fountain() -> Dictionary:
 		return {}
 	return fountain_data
 
+func get_visible_special_rooms() -> Array:
+	return level_data.get("special_rooms", [])
+
 func use_level_fountain() -> int:
 	var fountain_data = get_visible_fountain()
 	if fountain_data.is_empty():
@@ -594,6 +507,9 @@ func advance_to_next_floor(exit_id: String) -> bool:
 	for exit_data in get_visible_exits():
 		if exit_data.get("id", "") != exit_id:
 			continue
+		if int(exit_data.get("to_floor", current_floor + 1)) > MAX_FLOOR:
+			complete_run()
+			return true
 
 		current_floor = int(exit_data.get("to_floor", current_floor + 1))
 		current_enemy_id = ""
@@ -665,14 +581,7 @@ func build_enemy_encounter_data(enemy_id: String, enemy_type: String, enemy_pos:
 	}
 
 func scale_enemy_stats(stats: Dictionary, floor_number: int, path_type: String) -> Dictionary:
-	var scaled_stats = stats.duplicate(true)
-	var floor_bonus = max(0, floor_number - 1)
-	var elite_bonus = 1 if path_type == FLOOR_PATH_ELITE else 0
-	scaled_stats["hp"] = int(stats["hp"]) + floor_bonus * 6 + elite_bonus * 8
-	scaled_stats["max_hp"] = int(stats["max_hp"]) + floor_bonus * 6 + elite_bonus * 8
-	scaled_stats["attack"] = int(stats["attack"]) + floor_bonus * 2 + elite_bonus * 2
-	scaled_stats["defense"] = int(stats["defense"]) + elite_bonus
-	return scaled_stats
+	return EnemyDatabase.scale_enemy_stats(stats, floor_number, path_type, FLOOR_PATH_ELITE)
 
 func get_grid_key(x: int, y: int) -> String:
 	return "%d:%d" % [x, y]
@@ -697,3 +606,36 @@ func handle_player_defeat() -> void:
 	current_enemy_id = ""
 	if active_save_slot != 0:
 		delete_save_slot(active_save_slot)
+
+func is_run_complete() -> bool:
+	return current_floor >= MAX_FLOOR and is_level_cleared()
+
+func complete_run() -> Dictionary:
+	completed_run_summary = RunState.make_run_summary(
+		str(get_player_battle_stats().get("name", "Герой")),
+		get_current_path_label(),
+		current_floor,
+		MAX_FLOOR,
+		gold,
+		defeated_enemies.size(),
+		equipment,
+		Callable(self, "get_item_name")
+	)
+	current_enemy_id = ""
+	if active_save_slot != 0:
+		delete_save_slot(active_save_slot)
+	return completed_run_summary
+
+func get_completed_run_summary() -> Dictionary:
+	if completed_run_summary.is_empty():
+		return RunState.make_run_summary(
+			str(get_player_battle_stats().get("name", "Герой")),
+			get_current_path_label(),
+			current_floor,
+			MAX_FLOOR,
+			gold,
+			defeated_enemies.size(),
+			equipment,
+			Callable(self, "get_item_name")
+		)
+	return completed_run_summary.duplicate(true)

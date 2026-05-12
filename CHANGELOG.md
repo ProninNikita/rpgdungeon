@@ -15,10 +15,15 @@ The project uses semantic versioning while it is in prototype stage:
 - Added explicit save slot overwrite controls when starting a new game with full save slots.
 - Added scene-load and full-run verification checks, plus a manual full-run checklist.
 - Added `RPG_SAVE_DIR` support for isolated save-file verification runs.
+- Added a shared `CombatResolver` for live battles and combat balance simulation.
+- Added character, enemy, and run-state helper modules to reduce `GameState` responsibility.
+- Added a result screen for successful final-floor clears with run summary stats.
+- Added placeholder artifact and shop rooms to every generated floor.
 
 ### Changed
 - New games now require a free save slot and show a clear message when all slots are occupied.
 - Player defeat now ends the active run by removing its save slot.
+- Successful completed runs now show a result summary and remove the active run save.
 - Localized battle, map, inventory, and save slot UI text to Russian.
 - Centralized scene paths, reward result keys, and enemy encounter naming for cleaner project structure.
 
