@@ -6,10 +6,70 @@ const SHADOW = Color(0.0, 0.0, 0.0, 0.30)
 const HILITE = Color(1.0, 0.92, 0.70, 1)
 const EXTERNAL_ASSET_PATHS = {
 	"res://assets/pixel/battle/hero_base_sheet.png": true,
+	"res://assets/pixel/battle/goblin_sheet.png": true,
+	"res://assets/pixel/battle/skeleton_sheet.png": true,
+	"res://assets/pixel/battle/bat_sheet.png": true,
+	"res://assets/pixel/battle/slime_sheet.png": true,
+	"res://assets/pixel/map/crypt/floor.png": true,
+	"res://assets/pixel/map/crypt/floor_1.png": true,
+	"res://assets/pixel/map/crypt/floor_2.png": true,
+	"res://assets/pixel/map/crypt/floor_3.png": true,
+	"res://assets/pixel/map/crypt/wall.png": true,
+	"res://assets/pixel/map/crypt/wall_1.png": true,
+	"res://assets/pixel/map/crypt/wall_2.png": true,
+	"res://assets/pixel/map/crypt/artifact_floor.png": true,
+	"res://assets/pixel/map/crypt/shop_floor.png": true,
+	"res://assets/pixel/map/crypt/detail_crack.png": true,
+	"res://assets/pixel/map/crypt/detail_rubble.png": true,
+	"res://assets/pixel/map/crypt/detail_accent.png": true,
 	"res://assets/pixel/map/crypt/player.png": true,
+	"res://assets/pixel/map/crypt/enemy_goblin.png": true,
+	"res://assets/pixel/map/crypt/enemy_skeleton.png": true,
+	"res://assets/pixel/map/crypt/enemy_bat.png": true,
+	"res://assets/pixel/map/crypt/enemy_slime.png": true,
+	"res://assets/pixel/map/ember/floor.png": true,
+	"res://assets/pixel/map/ember/floor_1.png": true,
+	"res://assets/pixel/map/ember/floor_2.png": true,
+	"res://assets/pixel/map/ember/floor_3.png": true,
+	"res://assets/pixel/map/ember/wall.png": true,
+	"res://assets/pixel/map/ember/wall_1.png": true,
+	"res://assets/pixel/map/ember/wall_2.png": true,
+	"res://assets/pixel/map/ember/artifact_floor.png": true,
+	"res://assets/pixel/map/ember/shop_floor.png": true,
+	"res://assets/pixel/map/ember/detail_crack.png": true,
+	"res://assets/pixel/map/ember/detail_rubble.png": true,
+	"res://assets/pixel/map/ember/detail_accent.png": true,
 	"res://assets/pixel/map/ember/player.png": true,
-	"res://assets/pixel/map/moss/player.png": true
+	"res://assets/pixel/map/ember/enemy_goblin.png": true,
+	"res://assets/pixel/map/ember/enemy_skeleton.png": true,
+	"res://assets/pixel/map/ember/enemy_bat.png": true,
+	"res://assets/pixel/map/ember/enemy_slime.png": true,
+	"res://assets/pixel/map/moss/floor.png": true,
+	"res://assets/pixel/map/moss/floor_1.png": true,
+	"res://assets/pixel/map/moss/floor_2.png": true,
+	"res://assets/pixel/map/moss/floor_3.png": true,
+	"res://assets/pixel/map/moss/wall.png": true,
+	"res://assets/pixel/map/moss/wall_1.png": true,
+	"res://assets/pixel/map/moss/wall_2.png": true,
+	"res://assets/pixel/map/moss/artifact_floor.png": true,
+	"res://assets/pixel/map/moss/shop_floor.png": true,
+	"res://assets/pixel/map/moss/detail_crack.png": true,
+	"res://assets/pixel/map/moss/detail_rubble.png": true,
+	"res://assets/pixel/map/moss/detail_accent.png": true,
+	"res://assets/pixel/map/moss/player.png": true,
+	"res://assets/pixel/map/moss/enemy_goblin.png": true,
+	"res://assets/pixel/map/moss/enemy_skeleton.png": true,
+	"res://assets/pixel/map/moss/enemy_bat.png": true,
+	"res://assets/pixel/map/moss/enemy_slime.png": true
 }
+const EXTERNAL_MAP_ASSET_PREFIXES = [
+	"floor_",
+	"wall_",
+	"detail_",
+	"object_",
+	"prop_",
+	"scene_"
+]
 
 const MAP_VARIANTS = {
 	"crypt": {
@@ -66,10 +126,21 @@ func make_image(width: int, height: int, fill_color: Color = Color(0, 0, 0, 0)) 
 	return image
 
 func save_image(image: Image, path: String) -> void:
-	if EXTERNAL_ASSET_PATHS.has(path):
+	if should_preserve_external_asset(path):
 		preserve_external_asset(path)
 		return
 	image.save_png(path)
+
+func should_preserve_external_asset(path: String) -> bool:
+	if EXTERNAL_ASSET_PATHS.has(path):
+		return true
+	if not path.begins_with("res://assets/pixel/map/"):
+		return false
+	var file_name = path.get_file()
+	for prefix in EXTERNAL_MAP_ASSET_PREFIXES:
+		if file_name.begins_with(prefix):
+			return true
+	return false
 
 func preserve_external_asset(path: String) -> void:
 	if not FileAccess.file_exists(path):

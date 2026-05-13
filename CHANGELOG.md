@@ -6,6 +6,54 @@ The project uses semantic versioning while it is in prototype stage:
 - `0.x.0` for new gameplay systems or visible feature groups.
 - `0.x.y` for fixes and small improvements.
 
+## [Unreleased]
+
+## [0.1.4] - 2026-05-14
+
+### Changed
+- Replaced goblin, skeleton, bat, and slime battle sprites with larger AI-generated sheets that match the base hero's dark fantasy pixel-art style.
+- Updated dungeon enemy map icons from the new monster art and protected external monster assets from deterministic regeneration.
+- Increased large enemy battle sprite scaling so the new sheets read clearly beside the hero.
+- Enemy combat sprites now explicitly keep their left-facing orientation and lunge toward the hero during attacks.
+- Redrew crypt, ember, and moss dungeon floor, wall, artifact-room, and shop-room tiles from a darker AI-generated stone atlas that better matches the new character art.
+- Protected the new dungeon environment tiles from deterministic asset regeneration.
+- Dungeon rooms now choose environment tile variants by floor path: normal floors alternate crypt/moss, while elite floors use ember.
+- Added floor and wall tile variants plus sparse floor details to break up repeated map patterns.
+- Dungeon walls now render only around walkable tiles, leaving the space behind rooms as dark void instead of repeated wall texture.
+- Removed the visible grid overlay from dungeon rooms and reduced repeated special-room rune tiles.
+- Added inner floor-edge shadows so rooms read as shaped spaces instead of flat tile carpets.
+- Replaced colored map marker backplates with small world-object sprites for chests, fountains, exits, shops, artifacts, and used rooms.
+- Enemy name labels now appear only when the player is close instead of always floating over the dungeon map.
+- Added floor edge and corner overlays plus directional wall tiles so dungeon rooms have clearer silhouettes.
+- Added non-blocking environment props for crypt, ember, and moss floors with placement rules that avoid gameplay objects.
+- Added varied room decoration density and rare room scene props such as altars, rubble piles, and ruined corners.
+- Added a dungeon lighting overlay with variant-specific darkness, a soft player light, vignette, and local lights for important map objects.
+- Replaced the old symbol legend with contextual inspection text and a pulsing world highlight for nearby interactive objects.
+- Added a short world-space flash response when using chests, fountains, exits, and special rooms.
+- Added subtle variant-specific map atmosphere particles and ember light flicker.
+- Reframed the dungeon camera and replaced the exposed gray viewport with a dark full-scene backdrop.
+- Replaced the blue interaction selection square with a softer fantasy-style bracket highlight.
+- Added object-specific interaction bursts for chests, fountains, exits, shops, and artifact rooms.
+- Added grounding shadows and slightly stronger map scale for player and enemy sprites so they read better on dark floors.
+- Added a procedural battle arena backdrop with floor tiles, distant silhouettes, and grounding light under fighters, tinted by map variant.
+- Restyled battle HP bars with muted fills, segment ticks, and no embedded percentage text.
+- Reduced map HUD visual weight with shorter labels and a more compact framed layout.
+- Tightened inventory tabs, buttons, and slot typography so the inventory reads closer to the map UI style.
+- Added deterministic wall break-up marks and reduced sparse floor detail density after the camera framing pass.
+- Added `capture_visual_review.gd` to save repeatable map and battle screenshots for design review.
+- Extended visual review captures with a full-inventory, fully-equipped character screen state.
+- Restyled the map HUD, message panel, choice panel, and choice buttons with a darker framed fantasy UI treatment.
+- Restyled nearby enemy name labels with compact placement and dark outlines so they no longer feel like debug overlays.
+- Extended the darker framed UI style to the battle screen, HP bars, speed button, inventory window, tabs, item slots, and action menu.
+- Added a visual map smoke check that validates crypt, moss, ember, normal, and elite map states with the new lighting and interaction layers.
+- Protected generated map variant assets by prefix so future procedural asset runs do not overwrite external floor, wall, object, prop, or scene art.
+- Bumped project and save data version to `0.1.4`.
+
+### Fixed
+- Fixed the goblin attack frame so its slash points toward the left-side hero instead of away from the fight.
+- Fixed the skeleton battle sheet and map icon direction so the enemy faces the left-side hero.
+- Fixed the bat hurt frame so it no longer turns away while taking damage.
+
 ## [0.1.3] - 2026-05-13
 
 ### Added

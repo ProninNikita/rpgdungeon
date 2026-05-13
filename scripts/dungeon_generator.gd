@@ -272,9 +272,18 @@ static func build_wall_tiles(floor_positions: Dictionary) -> Array:
 	var walls = []
 	for y in range(ROOM_HEIGHT):
 		for x in range(ROOM_WIDTH):
-			if not floor_positions.has(get_grid_key(x, y)):
+			if not floor_positions.has(get_grid_key(x, y)) and is_next_to_floor_tile(x, y, floor_positions):
 				walls.append({"x": x, "y": y})
 	return walls
+
+static func is_next_to_floor_tile(x: int, y: int, floor_positions: Dictionary) -> bool:
+	for offset_y in range(-1, 2):
+		for offset_x in range(-1, 2):
+			if offset_x == 0 and offset_y == 0:
+				continue
+			if floor_positions.has(get_grid_key(x + offset_x, y + offset_y)):
+				return true
+	return false
 
 static func generate_exit_data(rooms: Array, floor_number: int, path_type: String) -> Array:
 	if floor_number >= MAX_FLOOR or rooms.is_empty():

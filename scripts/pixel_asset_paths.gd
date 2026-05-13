@@ -27,17 +27,18 @@ static func hero_battle_sheet(character_id: String) -> Texture2D:
 static func enemy_battle_sheet(enemy_type: String) -> Texture2D:
 	return battle_sheet(enemy_type)
 
-static func enemy_map_texture(enemy_type: String) -> Texture2D:
-	return map_texture("enemy_%s" % enemy_type)
+static func enemy_map_texture(enemy_type: String, variant: String = MAP_VARIANT) -> Texture2D:
+	return map_texture("enemy_%s" % enemy_type, variant)
 
 static func load_png_texture(path: String) -> Texture2D:
 	if texture_cache.has(path):
 		return texture_cache[path]
 
-	var imported_texture = ResourceLoader.load(path)
-	if imported_texture is Texture2D:
-		texture_cache[path] = imported_texture
-		return imported_texture
+	if FileAccess.file_exists(path + ".import"):
+		var imported_texture = ResourceLoader.load(path)
+		if imported_texture is Texture2D:
+			texture_cache[path] = imported_texture
+			return imported_texture
 
 	var image = Image.new()
 	var error = image.load(path)

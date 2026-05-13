@@ -34,6 +34,7 @@ func _ready() -> void:
 	collect_inventory_slots()
 	connect_inventory_slots()
 	connect_equipment_slots()
+	apply_inventory_style()
 	hide()
 
 func _notification(what: int) -> void:
@@ -48,6 +49,70 @@ func layout_window() -> void:
 	)
 	window_panel.position = (viewport_size - window_size) * 0.5
 	window_panel.size = window_size
+
+func apply_inventory_style() -> void:
+	$Dim.color = Color(0.0, 0.0, 0.0, 0.62)
+	window_panel.add_theme_stylebox_override("panel", create_inventory_panel_style(Color(0.040, 0.033, 0.030, 0.98), Color(0.55, 0.40, 0.25, 1.0), 2, 5))
+	$Window/Tabs/Equipment/Content/EquipmentPanel.add_theme_stylebox_override("panel", create_inventory_panel_style(Color(0.055, 0.048, 0.043, 0.94), Color(0.36, 0.27, 0.19, 1.0), 1, 4))
+	$Window/Tabs/Equipment/Content/InventoryPanel.add_theme_stylebox_override("panel", create_inventory_panel_style(Color(0.055, 0.048, 0.043, 0.94), Color(0.36, 0.27, 0.19, 1.0), 1, 4))
+	tabs.add_theme_stylebox_override("panel", create_inventory_panel_style(Color(0.030, 0.027, 0.026, 0.80), Color(0.25, 0.21, 0.17, 1.0), 1, 4))
+	tabs.add_theme_stylebox_override("tab_selected", create_inventory_panel_style(Color(0.13, 0.09, 0.055, 0.98), Color(0.64, 0.44, 0.22, 1.0), 1, 3))
+	tabs.add_theme_stylebox_override("tab_unselected", create_inventory_panel_style(Color(0.065, 0.055, 0.050, 0.94), Color(0.30, 0.24, 0.19, 1.0), 1, 3))
+	tabs.add_theme_color_override("font_selected_color", Color(0.96, 0.78, 0.46, 1.0))
+	tabs.add_theme_color_override("font_unselected_color", Color(0.66, 0.58, 0.48, 1.0))
+	tabs.add_theme_color_override("font_hovered_color", Color(1.0, 0.88, 0.62, 1.0))
+	tabs.add_theme_font_size_override("font_size", 14)
+	apply_inventory_label_style(self)
+	apply_inventory_button_style(close_button)
+	for slot_button in inventory_slots:
+		apply_inventory_button_style(slot_button)
+	for slot_button in [weapon_slot, armor_slot, accessory_slot]:
+		apply_inventory_button_style(slot_button)
+	item_action_menu.add_theme_stylebox_override("panel", create_inventory_panel_style(Color(0.050, 0.042, 0.038, 0.98), Color(0.52, 0.38, 0.23, 1.0), 2, 4))
+	item_action_menu.add_theme_color_override("font_color", Color(0.91, 0.84, 0.72, 1.0))
+	item_action_menu.add_theme_color_override("font_hover_color", Color(1.0, 0.90, 0.66, 1.0))
+
+func apply_inventory_label_style(node: Node) -> void:
+	if node is Label:
+		var label = node as Label
+		label.add_theme_color_override("font_color", Color(0.88, 0.82, 0.72, 1.0))
+		label.add_theme_color_override("font_outline_color", Color(0.025, 0.020, 0.018, 1.0))
+		label.add_theme_constant_override("outline_size", 1)
+	for child in node.get_children():
+		apply_inventory_label_style(child)
+
+func apply_inventory_button_style(button: Button) -> void:
+	if button == null:
+		return
+	button.add_theme_color_override("font_color", Color(0.90, 0.82, 0.68, 1.0))
+	button.add_theme_color_override("font_hover_color", Color(1.0, 0.90, 0.66, 1.0))
+	button.add_theme_color_override("font_pressed_color", Color(0.70, 0.95, 0.78, 1.0))
+	button.add_theme_color_override("font_disabled_color", Color(0.52, 0.47, 0.40, 1.0))
+	button.add_theme_color_override("font_outline_color", Color(0.018, 0.014, 0.012, 1.0))
+	button.add_theme_constant_override("outline_size", 1)
+	button.add_theme_font_size_override("font_size", 12)
+	button.add_theme_stylebox_override("normal", create_inventory_panel_style(Color(0.085, 0.068, 0.052, 0.96), Color(0.34, 0.25, 0.17, 1.0), 1, 3))
+	button.add_theme_stylebox_override("hover", create_inventory_panel_style(Color(0.14, 0.095, 0.060, 0.98), Color(0.68, 0.46, 0.24, 1.0), 1, 3))
+	button.add_theme_stylebox_override("pressed", create_inventory_panel_style(Color(0.065, 0.082, 0.060, 1.0), Color(0.52, 0.68, 0.44, 1.0), 1, 3))
+	button.add_theme_stylebox_override("disabled", create_inventory_panel_style(Color(0.042, 0.038, 0.036, 0.88), Color(0.18, 0.16, 0.14, 1.0), 1, 3))
+
+func create_inventory_panel_style(background_color: Color, border_color: Color, border_width: int, radius: int) -> StyleBoxFlat:
+	var style = StyleBoxFlat.new()
+	style.bg_color = background_color
+	style.border_color = border_color
+	style.border_width_left = border_width
+	style.border_width_top = border_width
+	style.border_width_right = border_width
+	style.border_width_bottom = border_width
+	style.corner_radius_top_left = radius
+	style.corner_radius_top_right = radius
+	style.corner_radius_bottom_left = radius
+	style.corner_radius_bottom_right = radius
+	style.content_margin_left = 8
+	style.content_margin_top = 6
+	style.content_margin_right = 8
+	style.content_margin_bottom = 6
+	return style
 
 func toggle() -> void:
 	if visible:

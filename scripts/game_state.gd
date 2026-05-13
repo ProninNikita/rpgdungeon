@@ -12,7 +12,7 @@ const ScenePaths = preload("res://scripts/scene_paths.gd")
 const ResultData = preload("res://scripts/result_data.gd")
 
 const SAVE_SLOT_COUNT = SaveManager.SAVE_SLOT_COUNT
-const SAVE_VERSION = "0.1.3"
+const SAVE_VERSION = "0.1.4"
 const MAIN_LEVEL_PATH = ScenePaths.MAIN_LEVEL
 const RESULT_SCREEN_PATH = ScenePaths.RESULT_SCREEN
 const ROOM_WIDTH = DungeonGenerator.ROOM_WIDTH
