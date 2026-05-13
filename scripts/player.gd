@@ -1,5 +1,6 @@
 extends CharacterBody2D
 
+const PixelAssetPaths = preload("res://scripts/pixel_asset_paths.gd")
 const ScenePaths = preload("res://scripts/scene_paths.gd")
 const TILE_SIZE = 32
 const HALF_TILE = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
@@ -8,6 +9,8 @@ var grid_pos: Vector2i = Vector2i(8, 8)
 var input_locked: bool = false
 
 func _ready():
+	$Sprite2D.texture = PixelAssetPaths.map_texture("player")
+	$Sprite2D.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	# Выравниваем позицию на сетку
 	set_grid_position(grid_pos)
 

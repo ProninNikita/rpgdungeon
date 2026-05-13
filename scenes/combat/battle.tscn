@@ -6,8 +6,8 @@
 script = ExtResource("1_battle")
 
 [node name="Background" type="ColorRect" parent="."]
-offset_right = 1024.0
-offset_bottom = 768.0
+offset_right = 1600.0
+offset_bottom = 900.0
 color = Color(0.15, 0.15, 0.2, 1)
 
 [node name="PlayerHP" type="Label" parent="."]
@@ -43,9 +43,50 @@ offset_bottom = 75.0
 value = 100.0
 theme_override_colors/fill = Color(1, 0.2, 0.2, 1)
 
+[node name="PlayerSprite" type="Sprite2D" parent="."]
+position = Vector2(512, 540)
+scale = Vector2(1.71875, 1.71875)
+texture_filter = 1
+hframes = 3
+
+[node name="EnemySprite" type="Sprite2D" parent="."]
+position = Vector2(1120, 540)
+scale = Vector2(3.125, 3.125)
+texture_filter = 1
+hframes = 3
+
+[node name="StatusLabel" type="Label" parent="."]
+offset_left = 360.0
+offset_top = 94.0
+offset_right = 664.0
+offset_bottom = 126.0
+text = "Подготовка"
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EffectLabel" type="Label" parent="."]
+visible = false
+offset_left = 332.0
+offset_top = 126.0
+offset_right = 692.0
+offset_bottom = 154.0
+text = "Эффект"
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(1, 0.88, 0.35, 1)
+
+[node name="SpeedButton" type="Button" parent="."]
+offset_left = 884.0
+offset_top = 92.0
+offset_right = 1000.0
+offset_bottom = 128.0
+text = "Скорость x1"
+
 [node name="BattleLog" type="Label" parent="."]
 offset_left = 50.0
-offset_top = 150.0
+offset_top = 172.0
 offset_right = 975.0
 offset_bottom = 650.0
 text = "Бой начался."

@@ -52,7 +52,7 @@ text = "Врагов осталось: 0"
 
 [node name="LegendLabel" type="Label" parent="UI/Hud/HudContent"]
 layout_mode = 2
-text = "A Артефакты   $ Магазин   F Фонтан   C Сундук   > Выход   E Элитный"
+text = "* Артефакт   $ Магазин   + Фонтан   B Сундук   > Выход   ! Элитный"
 
 [node name="MessagePanel" type="Panel" parent="UI"]
 visible = false

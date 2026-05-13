@@ -6,6 +6,7 @@ imported/
 # Exported builds.
 builds/
 exports/
+tmp/
 *.pck
 *.exe
 *.app

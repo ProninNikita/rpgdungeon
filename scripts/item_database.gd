@@ -6,25 +6,25 @@ const LOOT_TABLES = {
 		"gold_min": 4,
 		"gold_max": 8,
 		"item_chance": 0.20,
-		"items": ["wooden_sword"]
+		"items": ["wooden_sword", "vitality_ring"]
 	},
 	"skeleton": {
 		"gold_min": 6,
 		"gold_max": 10,
 		"item_chance": 0.25,
-		"items": ["leather_chestpiece", "iron_sword"]
+		"items": ["leather_chestpiece", "iron_sword", "steel_sword"]
 	},
 	"bat": {
 		"gold_min": 3,
 		"gold_max": 7,
 		"item_chance": 0.15,
-		"items": ["wooden_sword", "vitality_ring"]
+		"items": ["wooden_sword", "vitality_ring", "ancient_amulet"]
 	},
 	"slime": {
 		"gold_min": 5,
 		"gold_max": 9,
 		"item_chance": 0.20,
-		"items": ["leather_chestpiece", "chainmail"]
+		"items": ["leather_chestpiece", "chainmail", "plate_armor"]
 	}
 }
 const ITEM_DEFINITIONS = {
@@ -66,6 +66,32 @@ const ITEM_DEFINITIONS = {
 		"slot": "accessory",
 		"bonuses": {
 			"max_hp": 15
+		}
+	},
+	"ancient_amulet": {
+		"name": "Древний амулет",
+		"type": "accessory",
+		"slot": "accessory",
+		"bonuses": {
+			"max_hp": 10,
+			"attack": 1
+		}
+	},
+	"steel_sword": {
+		"name": "Стальной меч",
+		"type": "weapon",
+		"slot": "weapon",
+		"bonuses": {
+			"attack": 6
+		}
+	},
+	"plate_armor": {
+		"name": "Пластинчатая броня",
+		"type": "armor",
+		"slot": "armor",
+		"bonuses": {
+			"max_hp": 5,
+			"defense": 3
 		}
 	}
 }

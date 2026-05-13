@@ -7,6 +7,7 @@ const ITEM_ACTION_DISCARD = 1
 const ITEM_ACTION_UNEQUIP = 2
 
 @onready var close_button = $Window/Header/CloseButton
+@onready var window_panel = $Window
 @onready var tabs = $Window/Tabs
 @onready var character_label = $Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent/CharacterLabel
 @onready var gold_label = $Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent/GoldLabel
@@ -25,6 +26,7 @@ var selected_inventory_index: int = -1
 var selected_equipment_slot: String = ""
 
 func _ready() -> void:
+	layout_window()
 	tabs.set_tab_title(0, "Снаряжение")
 	tabs.set_tab_title(1, "Пассивки")
 	close_button.pressed.connect(close)
@@ -33,6 +35,19 @@ func _ready() -> void:
 	connect_inventory_slots()
 	connect_equipment_slots()
 	hide()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and window_panel != null:
+		layout_window()
+
+func layout_window() -> void:
+	var viewport_size = get_viewport_rect().size
+	var window_size = Vector2(
+		min(800.0, max(720.0, viewport_size.x - 96.0)),
+		min(624.0, max(560.0, viewport_size.y - 96.0))
+	)
+	window_panel.position = (viewport_size - window_size) * 0.5
+	window_panel.size = window_size
 
 func toggle() -> void:
 	if visible:
@@ -88,9 +103,14 @@ func create_item_action_menu() -> void:
 	add_child(item_action_menu)
 
 func refresh_equipment_slots() -> void:
-	weapon_slot.text = get_equipment_slot_text("weapon")
-	armor_slot.text = get_equipment_slot_text("armor")
-	accessory_slot.text = get_equipment_slot_text("accessory")
+	refresh_equipment_slot_button(weapon_slot, "weapon")
+	refresh_equipment_slot_button(armor_slot, "armor")
+	refresh_equipment_slot_button(accessory_slot, "accessory")
+
+func refresh_equipment_slot_button(slot_button: Button, slot: String) -> void:
+	var item_id = str(GameState.equipment.get(slot, ""))
+	slot_button.text = get_equipment_slot_text(slot)
+	slot_button.disabled = item_id.is_empty()
 
 func get_equipment_slot_text(slot: String) -> String:
 	var item_id = str(GameState.equipment.get(slot, ""))

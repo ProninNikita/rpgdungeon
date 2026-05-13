@@ -1,9 +1,11 @@
 extends CharacterBody2D
 
+const PixelAssetPaths = preload("res://scripts/pixel_asset_paths.gd")
 const TILE_SIZE = 32
 const HALF_TILE = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 
 @export var enemy_id: String = ""
+@export var enemy_type: String = "goblin"
 @export var grid_pos: Vector2i = Vector2i(0, 0)
 @export var encounter_radius: int = 1
 
@@ -20,6 +22,8 @@ func _ready():
 	if position != Vector2.ZERO:
 		grid_pos = world_to_grid_position(position)
 	set_grid_position(grid_pos)
+	$Sprite2D.texture = PixelAssetPaths.enemy_map_texture(enemy_type)
+	$Sprite2D.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	$Label.text = name_label
 	add_to_group("enemies")
 

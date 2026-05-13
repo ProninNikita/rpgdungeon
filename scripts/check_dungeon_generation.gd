@@ -7,11 +7,19 @@ const RUN_COUNT = 100
 var failures: Array = []
 
 func _init() -> void:
-	for run_index in range(RUN_COUNT):
-		validate_generated_level(run_index, 1, DungeonGenerator.FLOOR_PATH_NORMAL)
-		validate_generated_level(run_index, 2, DungeonGenerator.FLOOR_PATH_NORMAL)
-		validate_generated_level(run_index, 3, DungeonGenerator.FLOOR_PATH_NORMAL)
-		validate_generated_level(run_index, 3, DungeonGenerator.FLOOR_PATH_ELITE)
+	var requested_seeds = get_requested_seeds()
+	if requested_seeds.is_empty():
+		for run_index in range(RUN_COUNT):
+			validate_generated_level(run_index, 1, DungeonGenerator.FLOOR_PATH_NORMAL)
+			validate_generated_level(run_index, 2, DungeonGenerator.FLOOR_PATH_NORMAL)
+			validate_generated_level(run_index, 3, DungeonGenerator.FLOOR_PATH_NORMAL)
+			validate_generated_level(run_index, 3, DungeonGenerator.FLOOR_PATH_ELITE)
+	else:
+		for seed in requested_seeds:
+			validate_generated_level(0, 1, DungeonGenerator.FLOOR_PATH_NORMAL, seed)
+			validate_generated_level(0, 2, DungeonGenerator.FLOOR_PATH_NORMAL, seed)
+			validate_generated_level(0, 3, DungeonGenerator.FLOOR_PATH_NORMAL, seed)
+			validate_generated_level(0, 3, DungeonGenerator.FLOOR_PATH_ELITE, seed)
 
 	if failures.is_empty():
 		print("Dungeon generation check passed for %d generated levels." % (RUN_COUNT * 4))
@@ -21,15 +29,30 @@ func _init() -> void:
 			push_error(failure)
 		quit(1)
 
-func validate_generated_level(run_index: int, floor_number: int, path_type: String) -> void:
+func get_requested_seeds() -> Array:
+	var seeds = []
+	for arg in OS.get_cmdline_user_args():
+		var value = str(arg).strip_edges()
+		if value.is_empty():
+			continue
+		seeds.append(int(value))
+	return seeds
+
+func validate_generated_level(run_index: int, floor_number: int, path_type: String, seed_override: int = -1) -> void:
 	var level_data = DungeonGenerator.generate_level_data(
 		floor_number,
 		path_type,
-		Callable(self, "build_enemy_encounter_data")
+		Callable(self, "build_enemy_encounter_data"),
+		seed_override
 	)
 	var floor_positions = get_floor_position_lookup(level_data.get("floor_tiles", []))
 	var occupied = {}
-	var context = "run %d floor %d path %s" % [run_index, floor_number, path_type]
+	var context = "run %d seed %d floor %d path %s" % [
+		run_index,
+		int(level_data.get("seed", -1)),
+		floor_number,
+		path_type
+	]
 
 	var start_position = level_data.get("start_position", {})
 	assert_walkable(context, "start", start_position, floor_positions)

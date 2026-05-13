@@ -10,24 +10,45 @@ const ENEMY_COUNT = 4
 const MAX_FLOOR = 3
 const START_GRID_POS = {"x": 8, "y": 8}
 const DUNGEON_ENEMY_TYPES = ["goblin", "skeleton", "bat", "slime"]
+const ELITE_DUNGEON_ENEMY_TYPES = ["skeleton", "slime", "bat", "skeleton", "slime"]
 const FLOOR_PATH_NORMAL = "normal"
 const FLOOR_PATH_ELITE = "elite"
 const ROOM_TYPE_ARTIFACT = "artifact"
 const ROOM_TYPE_SHOP = "shop"
 const SPECIAL_ROOM_COUNT = 2
+const ARTIFACT_ROOM_ITEM_ID = "ancient_amulet"
+const SHOP_ROOM_ITEM_ID = "chainmail"
+const SHOP_ROOM_PRICE = 30
+const ARTIFACT_ROOM_OPTIONS = [
+	{"item_id": "ancient_amulet"},
+	{"item_id": "vitality_ring"},
+	{"item_id": "steel_sword"}
+]
+const SHOP_ROOM_OPTIONS = [
+	{"item_id": "chainmail", "price": 30},
+	{"item_id": "iron_sword", "price": 28},
+	{"item_id": "plate_armor", "price": 42}
+]
 
 static func generate_level_data(
 	floor_number: int,
 	path_type: String,
-	enemy_encounter_builder: Callable
+	enemy_encounter_builder: Callable,
+	seed_override: int = -1
 ) -> Dictionary:
 	var rng = RandomNumberGenerator.new()
-	rng.randomize()
-	var level_seed = rng.randi()
+	var level_seed = seed_override
+	if level_seed < 0:
+		rng.randomize()
+		level_seed = rng.randi()
 	rng.seed = level_seed
 
 	var rooms = generate_rooms(rng)
-	var special_rooms = assign_special_rooms(rooms)
+	var exits = generate_exit_data(rooms, floor_number, path_type)
+	var chest = generate_chest_data(exits, floor_number, path_type, rooms)
+	var fountain = generate_fountain_data(rooms, floor_number)
+	var reserved_room_indexes = get_reserved_room_indexes(rooms, exits, chest, fountain)
+	var special_rooms = assign_special_rooms(rooms, reserved_room_indexes)
 	var floor_positions = {}
 
 	for room in rooms:
@@ -39,16 +60,14 @@ static func generate_level_data(
 	var floor_tiles = positions_to_array(floor_positions)
 	var walls = build_wall_tiles(floor_positions)
 	var start_position = get_room_center(rooms[0])
-	var exits = generate_exit_data(rooms, floor_number, path_type)
-	var chest = generate_chest_data(exits, floor_number, path_type, rooms)
-	var fountain = generate_fountain_data(rooms, floor_number)
 	var enemies = generate_enemy_encounter_data(rooms, floor_positions, start_position, exits, chest, fountain, special_rooms, rng, floor_number, path_type, enemy_encounter_builder)
 
 	return {
 		"seed": level_seed,
-		"floor_number": floor_number,
-		"path": path_type,
-		"width": ROOM_WIDTH,
+			"floor_number": floor_number,
+			"path": path_type,
+			"path_modifier": get_path_modifier_data(path_type),
+			"width": ROOM_WIDTH,
 		"height": ROOM_HEIGHT,
 		"start_position": start_position,
 		"rooms": rooms,
@@ -66,7 +85,7 @@ static func generate_rooms(rng: RandomNumberGenerator) -> Array:
 	var target_room_count = rng.randi_range(MIN_ROOM_COUNT, MAX_ROOM_COUNT) + SPECIAL_ROOM_COUNT
 	var attempts = 0
 
-	while rooms.size() < target_room_count and attempts < 180:
+	while rooms.size() < target_room_count and attempts < 800:
 		attempts += 1
 		var width = rng.randi_range(MIN_ROOM_SIZE, MAX_ROOM_SIZE)
 		var height = rng.randi_range(MIN_ROOM_SIZE, MAX_ROOM_SIZE)
@@ -79,18 +98,59 @@ static func generate_rooms(rng: RandomNumberGenerator) -> Array:
 
 	if rooms.is_empty():
 		rooms.append({"x": 5, "y": 5, "width": 5, "height": 5})
+	if rooms.size() < SPECIAL_ROOM_COUNT + 2:
+		return get_fallback_rooms()
 
 	return rooms
 
-static func assign_special_rooms(rooms: Array) -> Array:
+static func get_fallback_rooms() -> Array:
+	return [
+		{"x": 1, "y": 1, "width": 3, "height": 3},
+		{"x": 7, "y": 1, "width": 3, "height": 3},
+		{"x": 12, "y": 1, "width": 3, "height": 3},
+		{"x": 1, "y": 10, "width": 3, "height": 3},
+		{"x": 12, "y": 11, "width": 3, "height": 3}
+	]
+
+static func get_reserved_room_indexes(rooms: Array, exits: Array, chest_data: Dictionary, fountain_data: Dictionary) -> Dictionary:
+	var reserved = {}
+	if not rooms.is_empty():
+		reserved[0] = true
+	for exit_data in exits:
+		var room_index = find_room_index_containing_position(rooms, exit_data)
+		if room_index >= 0:
+			reserved[room_index] = true
+	if not chest_data.is_empty():
+		var chest_room_index = find_room_index_containing_position(rooms, chest_data)
+		if chest_room_index >= 0:
+			reserved[chest_room_index] = true
+	if not fountain_data.is_empty():
+		var fountain_room_index = find_room_index_containing_position(rooms, fountain_data)
+		if fountain_room_index >= 0:
+			reserved[fountain_room_index] = true
+	return reserved
+
+static func find_room_index_containing_position(rooms: Array, position_data: Dictionary) -> int:
+	var x = int(position_data.get("x", -1))
+	var y = int(position_data.get("y", -1))
+	for index in range(rooms.size()):
+		var room = rooms[index]
+		if x >= int(room["x"]) and x < int(room["x"]) + int(room["width"]) \
+				and y >= int(room["y"]) and y < int(room["y"]) + int(room["height"]):
+			return index
+	return -1
+
+static func assign_special_rooms(rooms: Array, reserved_room_indexes: Dictionary = {}) -> Array:
 	if rooms.size() < 3:
 		return []
 
 	var candidate_indexes = []
-	for index in range(1, rooms.size() - 1):
+	for index in range(rooms.size()):
+		if reserved_room_indexes.has(index):
+			continue
 		candidate_indexes.append(index)
 	if candidate_indexes.size() < SPECIAL_ROOM_COUNT:
-		for index in range(1, rooms.size()):
+		for index in range(1, rooms.size() - 1):
 			if not candidate_indexes.has(index):
 				candidate_indexes.append(index)
 
@@ -118,9 +178,32 @@ static func build_special_room_data(rooms: Array) -> Array:
 			"marker": get_special_room_marker(room_type),
 			"room_index": index,
 			"x": room_center["x"],
-			"y": room_center["y"]
+			"y": room_center["y"],
+			"is_used": false,
+			"item_id": get_special_room_item_id(room_type),
+			"price": get_special_room_price(room_type),
+			"options": get_special_room_options(room_type)
 		})
 	return special_rooms
+
+static func get_special_room_item_id(room_type: String) -> String:
+	if room_type == ROOM_TYPE_ARTIFACT:
+		return ARTIFACT_ROOM_ITEM_ID
+	if room_type == ROOM_TYPE_SHOP:
+		return SHOP_ROOM_ITEM_ID
+	return ""
+
+static func get_special_room_price(room_type: String) -> int:
+	if room_type == ROOM_TYPE_SHOP:
+		return SHOP_ROOM_PRICE
+	return 0
+
+static func get_special_room_options(room_type: String) -> Array:
+	if room_type == ROOM_TYPE_ARTIFACT:
+		return ARTIFACT_ROOM_OPTIONS.duplicate(true)
+	if room_type == ROOM_TYPE_SHOP:
+		return SHOP_ROOM_OPTIONS.duplicate(true)
+	return []
 
 static func get_special_room_label(room_type: String) -> String:
 	if room_type == ROOM_TYPE_ARTIFACT:
@@ -131,7 +214,7 @@ static func get_special_room_label(room_type: String) -> String:
 
 static func get_special_room_marker(room_type: String) -> String:
 	if room_type == ROOM_TYPE_ARTIFACT:
-		return "A"
+		return "*"
 	if room_type == ROOM_TYPE_SHOP:
 		return "$"
 	return "?"
@@ -253,9 +336,9 @@ static func generate_fountain_data(rooms: Array, floor_number: int) -> Dictionar
 
 static func get_floor_chest_reward(floor_number: int, path_type: String) -> String:
 	if path_type == FLOOR_PATH_ELITE:
-		return "vitality_ring"
+		return "ancient_amulet"
 	if floor_number >= 3:
-		return "iron_sword"
+		return "steel_sword"
 	if floor_number >= 2:
 		return "leather_chestpiece"
 	return "wooden_sword"
@@ -325,7 +408,7 @@ static func generate_enemy_encounter_data(
 		if enemy_pos.is_empty():
 			break
 		occupied[get_grid_key(enemy_pos["x"], enemy_pos["y"])] = true
-		var enemy_type = DUNGEON_ENEMY_TYPES[index % DUNGEON_ENEMY_TYPES.size()]
+		var enemy_type = get_enemy_type_for_spawn(index, path_type)
 		enemies.append(enemy_encounter_builder.call("level_enemy_%02d" % [index + 1], enemy_type, enemy_pos, floor_number, path_type))
 
 	return enemies
@@ -340,6 +423,23 @@ static func get_floor_enemy_count(floor_number: int, path_type: String) -> int:
 	if path_type == FLOOR_PATH_ELITE:
 		count += 1
 	return count
+
+static func get_enemy_type_for_spawn(index: int, path_type: String) -> String:
+	var enemy_types = ELITE_DUNGEON_ENEMY_TYPES if path_type == FLOOR_PATH_ELITE else DUNGEON_ENEMY_TYPES
+	return enemy_types[index % enemy_types.size()]
+
+static func get_path_modifier_data(path_type: String) -> Dictionary:
+	if path_type == FLOOR_PATH_ELITE:
+		return {
+			"id": "elite_risk",
+			"label": "Опасный путь",
+			"description": "Больше врагов, опаснее состав, усиленные награды."
+		}
+	return {
+		"id": "steady_route",
+		"label": "Ровный путь",
+		"description": "Стандартный состав врагов и предсказуемые награды."
+	}
 
 static func get_random_floor_position(
 	rng: RandomNumberGenerator,

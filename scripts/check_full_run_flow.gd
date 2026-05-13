@@ -64,6 +64,7 @@ func validate_full_run_flow() -> void:
 	assert_true(active_slot != 0, "new game chooses an active save slot")
 	assert_true(SaveManager.save_slot_exists(active_slot), "new game writes a save slot")
 	assert_special_rooms("new game floor")
+	validate_special_room_rewards()
 
 	validate_enemy_fight()
 	validate_inventory_equip()
@@ -97,6 +98,8 @@ func validate_inventory_equip() -> void:
 	assert_true(game_state.add_inventory_item("wooden_sword"), "item can be added to inventory")
 	assert_true(game_state.equip_inventory_item(0), "inventory item can be equipped")
 	assert_true(str(game_state.equipment.get("weapon", "")) == "wooden_sword", "weapon slot contains equipped item")
+	assert_true(game_state.unequip_equipment_slot("weapon"), "equipped item can be unequipped")
+	assert_true(str(game_state.equipment.get("weapon", "")).is_empty(), "weapon slot is empty after unequip")
 
 func validate_floor_clear_and_chest() -> void:
 	mark_current_floor_cleared()
@@ -170,6 +173,37 @@ func assert_special_rooms(context: String) -> void:
 		room_types[str(special_room.get("type", ""))] = true
 	assert_true(room_types.has("artifact"), "%s has an artifact room" % context)
 	assert_true(room_types.has("shop"), "%s has a shop room" % context)
+
+func validate_special_room_rewards() -> void:
+	var artifact_room = find_special_room_by_type("artifact")
+	assert_true(not artifact_room.is_empty(), "artifact room exists")
+	if not artifact_room.is_empty():
+		var artifact_choice = game_state.use_special_room(str(artifact_room.get("id", "")))
+		var artifact_options = artifact_choice.get("options", [])
+		var artifact_item = str(artifact_options[0].get("item_id", ""))
+		var artifact_result = game_state.use_special_room_option(str(artifact_room.get("id", "")), 0)
+		assert_true(str(artifact_result.get("message", "")).length() > 0, "artifact room returns a message")
+		assert_true(game_state.inventory.has(artifact_item), "artifact room grants its item")
+
+	var shop_room = find_special_room_by_type("shop")
+	assert_true(not shop_room.is_empty(), "shop room exists")
+	if not shop_room.is_empty():
+		var shop_choice = game_state.use_special_room(str(shop_room.get("id", "")))
+		var shop_options = shop_choice.get("options", [])
+		var shop_item = str(shop_options[0].get("item_id", ""))
+		var shop_price = int(shop_options[0].get("price", 0))
+		game_state.add_gold(shop_price)
+		var gold_before = int(game_state.gold)
+		var shop_result = game_state.use_special_room_option(str(shop_room.get("id", "")), 0)
+		assert_true(str(shop_result.get("message", "")).length() > 0, "shop room returns a message")
+		assert_true(game_state.inventory.has(shop_item), "shop room adds purchased item")
+		assert_true(int(game_state.gold) == gold_before - shop_price, "shop room spends gold")
+
+func find_special_room_by_type(room_type: String) -> Dictionary:
+	for special_room in game_state.level_data.get("special_rooms", []):
+		if str(special_room.get("type", "")) == room_type:
+			return special_room
+	return {}
 
 func find_exit_by_path(path_type: String) -> Dictionary:
 	for exit_data in game_state.get_visible_exits():

@@ -2,15 +2,17 @@ extends Node
 
 const SaveManager = preload("res://scripts/save_manager.gd")
 const RunState = preload("res://scripts/run_state.gd")
+const RunFlowService = preload("res://scripts/run_flow_service.gd")
 const DungeonGenerator = preload("res://scripts/dungeon_generator.gd")
 const ItemDatabase = preload("res://scripts/item_database.gd")
+const InventoryService = preload("res://scripts/inventory_service.gd")
 const CharacterDatabase = preload("res://scripts/character_database.gd")
 const EnemyDatabase = preload("res://scripts/enemy_database.gd")
 const ScenePaths = preload("res://scripts/scene_paths.gd")
 const ResultData = preload("res://scripts/result_data.gd")
 
 const SAVE_SLOT_COUNT = SaveManager.SAVE_SLOT_COUNT
-const SAVE_VERSION = "0.1.2"
+const SAVE_VERSION = "0.1.3"
 const MAIN_LEVEL_PATH = ScenePaths.MAIN_LEVEL
 const RESULT_SCREEN_PATH = ScenePaths.RESULT_SCREEN
 const ROOM_WIDTH = DungeonGenerator.ROOM_WIDTH
@@ -54,25 +56,7 @@ func start_new_game(character_id: String) -> bool:
 	return start_new_game_in_slot(character_id, save_slot, false)
 
 func start_new_game_in_slot(character_id: String, slot: int, overwrite: bool = false) -> bool:
-	if not SaveManager.is_valid_slot(slot):
-		return false
-	if save_slot_exists(slot) and not overwrite:
-		return false
-
-	selected_character_id = character_id
-	current_enemy_id = ""
-	defeated_enemies.clear()
-	completed_run_summary.clear()
-	current_floor = 1
-	gold = 0
-	inventory.clear()
-	equipment = DEFAULT_EQUIPMENT.duplicate()
-	level_data = generate_level_data(current_floor, FLOOR_PATH_NORMAL)
-	player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
-	player_stats = get_character_stats(character_id)
-	active_save_slot = slot
-	save_current_game()
-	return true
+	return RunFlowService.start_new_game(self, character_id, slot, overwrite)
 
 func load_game(slot: int) -> bool:
 	var save_data = load_save_slot(slot)
@@ -112,6 +96,8 @@ func migrate_save_data(save_data: Dictionary) -> Dictionary:
 
 	if version in ["0.1.0", "0.1.1"]:
 		migrated = migrate_pre_0_1_2_save_data(migrated)
+	if version in ["0.1.0", "0.1.1", "0.1.2"]:
+		migrated = migrate_pre_0_1_3_save_data(migrated)
 
 	migrated["version"] = SAVE_VERSION
 	return migrated
@@ -126,6 +112,33 @@ func migrate_pre_0_1_2_save_data(save_data: Dictionary) -> Dictionary:
 		migrated["gold"] = 0
 	if not migrated.has("defeated_enemies"):
 		migrated["defeated_enemies"] = {}
+	return migrated
+
+func migrate_pre_0_1_3_save_data(save_data: Dictionary) -> Dictionary:
+	var migrated = save_data.duplicate(true)
+	var saved_level_data = migrated.get("level_data", {})
+	if typeof(saved_level_data) != TYPE_DICTIONARY:
+		return migrated
+	var path_type = str(saved_level_data.get("path", FLOOR_PATH_NORMAL))
+	if not saved_level_data.has("path_modifier") or typeof(saved_level_data.get("path_modifier")) != TYPE_DICTIONARY:
+		saved_level_data["path_modifier"] = DungeonGenerator.get_path_modifier_data(path_type)
+	var special_rooms = saved_level_data.get("special_rooms", [])
+	if typeof(special_rooms) != TYPE_ARRAY:
+		return migrated
+
+	var migrated_special_rooms = []
+	for special_room in special_rooms:
+		if typeof(special_room) != TYPE_DICTIONARY:
+			continue
+		var migrated_room = special_room.duplicate(true)
+		var room_type = str(migrated_room.get("type", ""))
+		if not migrated_room.has("options") or typeof(migrated_room.get("options")) != TYPE_ARRAY:
+			migrated_room["options"] = DungeonGenerator.get_special_room_options(room_type)
+		if not migrated_room.has("is_used"):
+			migrated_room["is_used"] = false
+		migrated_special_rooms.append(migrated_room)
+	saved_level_data["special_rooms"] = migrated_special_rooms
+	migrated["level_data"] = saved_level_data
 	return migrated
 
 func normalize_player_stats(saved_stats: Variant, character_id: String) -> Dictionary:
@@ -275,6 +288,8 @@ func get_enemy_encounter_data(enemy_id: String) -> Dictionary:
 func normalize_level_data() -> void:
 	level_data["floor_number"] = int(level_data.get("floor_number", current_floor))
 	level_data["path"] = str(level_data.get("path", FLOOR_PATH_NORMAL))
+	if not level_data.has("path_modifier") or typeof(level_data.get("path_modifier")) != TYPE_DICTIONARY:
+		level_data["path_modifier"] = DungeonGenerator.get_path_modifier_data(str(level_data["path"]))
 
 	var normalized_enemies = []
 	for enemy_encounter in level_data.get("enemies", []):
@@ -289,6 +304,43 @@ func normalize_level_data() -> void:
 		level_data["fountain"] = DungeonGenerator.generate_fountain_data(level_data.get("rooms", []), int(level_data["floor_number"]))
 	if not level_data.has("special_rooms") or typeof(level_data.get("special_rooms")) != TYPE_ARRAY:
 		level_data["special_rooms"] = DungeonGenerator.build_special_room_data(level_data.get("rooms", []))
+	else:
+		var normalized_special_rooms = []
+		for special_room in level_data.get("special_rooms", []):
+			if typeof(special_room) == TYPE_DICTIONARY:
+				normalized_special_rooms.append(normalize_special_room_data(special_room))
+		level_data["special_rooms"] = normalized_special_rooms
+
+func normalize_special_room_data(special_room: Dictionary) -> Dictionary:
+	var room_type = str(special_room.get("type", ""))
+	var normalized = special_room.duplicate(true)
+	normalized["type"] = room_type
+	normalized["label"] = str(normalized.get("label", DungeonGenerator.get_special_room_label(room_type)))
+	normalized["marker"] = str(normalized.get("marker", DungeonGenerator.get_special_room_marker(room_type)))
+	normalized["is_used"] = bool(normalized.get("is_used", false))
+	normalized["options"] = normalize_special_room_options(room_type, normalized.get("options", []))
+	var first_option = normalized["options"][0] if not normalized["options"].is_empty() else {}
+	normalized["item_id"] = str(normalized.get("item_id", first_option.get("item_id", DungeonGenerator.get_special_room_item_id(room_type))))
+	normalized["price"] = int(normalized.get("price", first_option.get("price", DungeonGenerator.get_special_room_price(room_type))))
+	return normalized
+
+func normalize_special_room_options(room_type: String, saved_options: Variant) -> Array:
+	var source_options = saved_options if typeof(saved_options) == TYPE_ARRAY else []
+	if source_options.is_empty():
+		source_options = DungeonGenerator.get_special_room_options(room_type)
+
+	var normalized = []
+	for option in source_options:
+		if typeof(option) != TYPE_DICTIONARY:
+			continue
+		var item_id = str(option.get("item_id", ""))
+		if item_id.is_empty() or get_item_definition(item_id).is_empty():
+			continue
+		normalized.append({
+			"item_id": item_id,
+			"price": max(0, int(option.get("price", 0)))
+		})
+	return normalized
 
 func normalize_enemy_encounter_data(enemy_encounter: Dictionary) -> Dictionary:
 	var enemy_type = str(enemy_encounter.get("type", DEFAULT_ENEMY_TYPE))
@@ -332,10 +384,8 @@ func get_item_bonus_text(item_id: String) -> String:
 	return ItemDatabase.get_item_bonus_text(item_id)
 
 func add_inventory_item(item_id: String, should_save: bool = false) -> bool:
-	if not ItemDatabase.can_add_inventory_item(inventory, item_id):
+	if not InventoryService.add_inventory_item(inventory, item_id):
 		return false
-
-	inventory.append(item_id)
 	if should_save:
 		save_current_game()
 	return true
@@ -346,47 +396,22 @@ func add_gold(amount: int, should_save: bool = false) -> void:
 		save_current_game()
 
 func equip_inventory_item(inventory_index: int, should_save: bool = true) -> bool:
-	if inventory_index < 0 or inventory_index >= inventory.size():
+	if not InventoryService.equip_inventory_item(inventory, equipment, inventory_index):
 		return false
-
-	var item_id = str(inventory[inventory_index])
-	var item = get_item_definition(item_id)
-	if item.is_empty():
-		return false
-
-	var slot = str(item.get("slot", ""))
-	if not equipment.has(slot):
-		return false
-
-	var previous_item_id = str(equipment.get(slot, ""))
-	equipment[slot] = item_id
-	inventory.remove_at(inventory_index)
-	if not previous_item_id.is_empty():
-		inventory.append(previous_item_id)
-
 	if should_save:
 		save_current_game()
 	return true
 
 func unequip_equipment_slot(slot: String, should_save: bool = true) -> bool:
-	if not equipment.has(slot):
+	if not InventoryService.unequip_equipment_slot(inventory, equipment, slot):
 		return false
-
-	var item_id = str(equipment.get(slot, ""))
-	if item_id.is_empty() or not ItemDatabase.can_add_inventory_item(inventory, item_id):
-		return false
-
-	equipment[slot] = ""
-	inventory.append(item_id)
 	if should_save:
 		save_current_game()
 	return true
 
 func discard_inventory_item(inventory_index: int, should_save: bool = true) -> bool:
-	if inventory_index < 0 or inventory_index >= inventory.size():
+	if not InventoryService.discard_inventory_item(inventory, inventory_index):
 		return false
-
-	inventory.remove_at(inventory_index)
 	if should_save:
 		save_current_game()
 	return true
@@ -436,6 +461,20 @@ func get_current_path_label() -> String:
 		return "Элитный"
 	return "Обычный"
 
+func get_current_path_modifier_label() -> String:
+	var modifier = level_data.get("path_modifier", {})
+	if typeof(modifier) != TYPE_DICTIONARY:
+		return ""
+	return str(modifier.get("label", ""))
+
+func get_path_consequence_text(path_type: String, to_floor: int) -> String:
+	var modifier = DungeonGenerator.get_path_modifier_data(path_type)
+	return "%s на этаж %d: %s" % [
+		str(modifier.get("label", get_current_path_label())),
+		to_floor,
+		str(modifier.get("description", ""))
+	]
+
 func get_visible_exits() -> Array:
 	if not is_level_cleared():
 		return []
@@ -458,6 +497,135 @@ func get_visible_fountain() -> Dictionary:
 
 func get_visible_special_rooms() -> Array:
 	return level_data.get("special_rooms", [])
+
+func use_special_room(room_id: String) -> Dictionary:
+	for index in range(level_data.get("special_rooms", []).size()):
+		var special_room = level_data["special_rooms"][index]
+		if str(special_room.get("id", "")) != room_id:
+			continue
+		var room = normalize_special_room_data(special_room)
+		level_data["special_rooms"][index] = room
+		return describe_special_room_choice(room)
+	return {"message": "Особая комната не найдена.", "changed": false}
+
+func use_special_room_option(room_id: String, option_index: int) -> Dictionary:
+	for index in range(level_data.get("special_rooms", []).size()):
+		var special_room = level_data["special_rooms"][index]
+		if str(special_room.get("id", "")) != room_id:
+			continue
+		var result = activate_special_room(special_room, option_index)
+		level_data["special_rooms"][index] = result.get("room", special_room)
+		if bool(result.get("changed", false)):
+			save_current_game()
+		return result
+	return {"message": "Особая комната не найдена.", "changed": false}
+
+func describe_special_room_choice(special_room: Dictionary) -> Dictionary:
+	var room = normalize_special_room_data(special_room)
+	if bool(room.get("is_used", false)):
+		return {
+			"message": "%s уже использована." % str(room.get("label", "Комната")),
+			"changed": false,
+			"room": room
+		}
+
+	var options = room.get("options", [])
+	if options.is_empty():
+		return {
+			"message": "%s пуста." % str(room.get("label", "Особая комната")),
+			"changed": false,
+			"room": room
+		}
+
+	var labels = []
+	for option in options:
+		labels.append(get_special_room_option_label(room, option))
+	return {
+		"message": "%s: выберите награду." % str(room.get("label", "Особая комната")),
+		"changed": false,
+		"needs_choice": true,
+		"room": room,
+		"options": options,
+		"option_labels": labels
+	}
+
+func get_special_room_option_label(room: Dictionary, option: Dictionary) -> String:
+	var item_id = str(option.get("item_id", ""))
+	var item_text = "%s (%s)" % [get_item_name(item_id), get_item_bonus_text(item_id)]
+	if str(room.get("type", "")) == DungeonGenerator.ROOM_TYPE_SHOP:
+		return "%s - %d золота" % [item_text, int(option.get("price", 0))]
+	return item_text
+
+func activate_special_room(special_room: Dictionary, option_index: int = 0) -> Dictionary:
+	var room = normalize_special_room_data(special_room)
+	if bool(room.get("is_used", false)):
+		return {
+			"message": "%s уже использована." % str(room.get("label", "Комната")),
+			"changed": false,
+			"room": room
+		}
+
+	var options = room.get("options", [])
+	if option_index < 0 or option_index >= options.size():
+		return {
+			"message": "Такого варианта здесь нет.",
+			"changed": false,
+			"room": room
+		}
+	var option = options[option_index]
+	var room_type = str(room.get("type", ""))
+	if room_type == DungeonGenerator.ROOM_TYPE_ARTIFACT:
+		return activate_artifact_room(room, option)
+	if room_type == DungeonGenerator.ROOM_TYPE_SHOP:
+		return activate_shop_room(room, option)
+
+	return {
+		"message": "%s пока пуста." % str(room.get("label", "Особая комната")),
+		"changed": false,
+		"room": room
+	}
+
+func activate_artifact_room(room: Dictionary, option: Dictionary) -> Dictionary:
+	var item_id = str(option.get("item_id", ""))
+	if item_id.is_empty():
+		return {"message": "Артефактная комната пуста.", "changed": false, "room": room}
+	if not add_inventory_item(item_id):
+		return {
+			"message": "Артефакт: инвентарь полон, %s оставлен на пьедестале." % get_item_name(item_id),
+			"changed": false,
+			"room": room
+		}
+	room["is_used"] = true
+	return {
+		"message": "Артефакт: получено %s." % get_item_name(item_id),
+		"changed": true,
+		"room": room
+	}
+
+func activate_shop_room(room: Dictionary, option: Dictionary) -> Dictionary:
+	var item_id = str(option.get("item_id", ""))
+	var price = int(option.get("price", 0))
+	if item_id.is_empty():
+		return {"message": "Магазин сегодня пуст.", "changed": false, "room": room}
+	if gold < price:
+		return {
+			"message": "Магазин: %s стоит %d золота." % [get_item_name(item_id), price],
+			"changed": false,
+			"room": room
+		}
+	if not add_inventory_item(item_id):
+		return {
+			"message": "Магазин: инвентарь полон, покупка отменена.",
+			"changed": false,
+			"room": room
+		}
+	gold -= price
+	room["is_used"] = true
+	return {
+		"message": "Магазин: куплено %s за %d золота." % [get_item_name(item_id), price],
+		"changed": true,
+		"room": room
+	}
 
 func use_level_fountain() -> int:
 	var fountain_data = get_visible_fountain()
@@ -504,22 +672,7 @@ func get_visible_chest_gold() -> int:
 	return int(chest_data.get("gold", 0))
 
 func advance_to_next_floor(exit_id: String) -> bool:
-	for exit_data in get_visible_exits():
-		if exit_data.get("id", "") != exit_id:
-			continue
-		if int(exit_data.get("to_floor", current_floor + 1)) > MAX_FLOOR:
-			complete_run()
-			return true
-
-		current_floor = int(exit_data.get("to_floor", current_floor + 1))
-		current_enemy_id = ""
-		defeated_enemies.clear()
-		level_data = generate_level_data(current_floor, str(exit_data.get("path", FLOOR_PATH_NORMAL)))
-		player_grid_pos = level_data.get("start_position", START_GRID_POS).duplicate()
-		save_current_game()
-		return true
-
-	return false
+	return RunFlowService.advance_to_next_floor(self, exit_id)
 
 func get_player_grid_position() -> Vector2i:
 	return Vector2i(int(player_grid_pos.get("x", START_GRID_POS["x"])), int(player_grid_pos.get("y", START_GRID_POS["y"])))
@@ -557,11 +710,12 @@ func set_player_battle_stats(stats: Dictionary, should_save: bool = false) -> vo
 	if should_save:
 		save_current_game()
 
-func generate_level_data(floor_number: int = 1, path_type: String = FLOOR_PATH_NORMAL) -> Dictionary:
+func generate_level_data(floor_number: int = 1, path_type: String = FLOOR_PATH_NORMAL, seed_override: int = -1) -> Dictionary:
 	return DungeonGenerator.generate_level_data(
 		floor_number,
 		path_type,
-		Callable(self, "build_enemy_encounter_data")
+		Callable(self, "build_enemy_encounter_data"),
+		seed_override
 	)
 
 func build_enemy_encounter_data(enemy_id: String, enemy_type: String, enemy_pos: Dictionary, floor_number: int = 1, path_type: String = FLOOR_PATH_NORMAL) -> Dictionary:
@@ -603,28 +757,13 @@ func clear_current_battle() -> void:
 	current_enemy_id = ""
 
 func handle_player_defeat() -> void:
-	current_enemy_id = ""
-	if active_save_slot != 0:
-		delete_save_slot(active_save_slot)
+	RunFlowService.handle_player_defeat(self)
 
 func is_run_complete() -> bool:
 	return current_floor >= MAX_FLOOR and is_level_cleared()
 
 func complete_run() -> Dictionary:
-	completed_run_summary = RunState.make_run_summary(
-		str(get_player_battle_stats().get("name", "Герой")),
-		get_current_path_label(),
-		current_floor,
-		MAX_FLOOR,
-		gold,
-		defeated_enemies.size(),
-		equipment,
-		Callable(self, "get_item_name")
-	)
-	current_enemy_id = ""
-	if active_save_slot != 0:
-		delete_save_slot(active_save_slot)
-	return completed_run_summary
+	return RunFlowService.complete_run(self)
 
 func get_completed_run_summary() -> Dictionary:
 	if completed_run_summary.is_empty():
