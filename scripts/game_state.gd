@@ -71,7 +71,10 @@ func load_game(slot: int) -> bool:
 	level_data = saved_level_data if typeof(saved_level_data) == TYPE_DICTIONARY else {}
 	var regenerated_level = false
 	if not is_valid_level_data(level_data):
-		level_data = generate_level_data(current_floor, FLOOR_PATH_NORMAL)
+		var fallback_path = str(level_data.get("path", FLOOR_PATH_NORMAL))
+		if fallback_path.is_empty():
+			fallback_path = FLOOR_PATH_NORMAL
+		level_data = generate_level_data(current_floor, fallback_path)
 		regenerated_level = true
 	else:
 		normalize_level_data()
@@ -184,9 +187,9 @@ func normalize_defeated_enemies(saved_defeated_enemies: Variant) -> Dictionary:
 			normalized[str(enemy_id)] = true
 	return normalized
 
-func save_current_game() -> void:
+func save_current_game() -> bool:
 	if active_save_slot == 0:
-		return
+		return false
 
 	var save_data = RunState.make_save_data(
 		SAVE_VERSION,
@@ -201,7 +204,10 @@ func save_current_game() -> void:
 		defeated_enemies
 	)
 
-	SaveManager.write_save_slot(active_save_slot, save_data)
+	var did_save = SaveManager.write_save_slot(active_save_slot, save_data)
+	if not did_save:
+		push_warning("Failed to save game slot %d." % active_save_slot)
+	return did_save
 
 func load_save_slot(slot: int) -> Dictionary:
 	return SaveManager.load_save_slot(slot)
@@ -760,7 +766,16 @@ func handle_player_defeat() -> void:
 	RunFlowService.handle_player_defeat(self)
 
 func is_run_complete() -> bool:
+	return is_final_floor_cleared() and is_final_reward_claimed()
+
+func is_final_floor_cleared() -> bool:
 	return current_floor >= MAX_FLOOR and is_level_cleared()
+
+func is_final_reward_claimed() -> bool:
+	if not is_final_floor_cleared():
+		return false
+	var chest_data = level_data.get("chest", {})
+	return chest_data.is_empty() or bool(chest_data.get("is_opened", false))
 
 func complete_run() -> Dictionary:
 	return RunFlowService.complete_run(self)

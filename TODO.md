@@ -1,100 +1,59 @@
 # TODO
 
-Актуальный список задач после визуального ревью с полным инвентарем и всем надетым шмотом.
+Актуальный список после проектного аудита 2026-05-15. Старые арт-review пункты перенесены в историю; этот файл теперь ведет ближайший ремонт gameplay, проверок, сейвов и UI.
 
-Фокус: карта и бой уже стали цельнее, но UI в нагруженных состояниях все еще слишком текстовый. Следующий главный этап - сделать инвентарь и боевые панели похожими на RPG-интерфейс, а не на таблицу кнопок.
+## P0 - Gameplay Flow
 
-## P0 - переработать полный инвентарь
+- [x] Исправить финал забега: последний бой больше не должен сразу пропускать финальный сундук.
+- [x] Оставить финальный сундук как последнюю награду перед экраном победы.
+- [x] Обновить full-run проверку, чтобы она ловила порядок: финальный этаж зачищен -> сундук открыт -> result screen разрешен.
+- [ ] Вручную пройти финальный этаж и убедиться, что сообщение после сундука читается до перехода на экран результата.
 
-- [ ] Уменьшить текстовую перегрузку слотов.
-  - [ ] В слотах показывать короткое имя предмета без полного списка бонусов.
-  - [ ] Перенести бонусы выбранного предмета в отдельную detail-панель.
-  - [ ] Проверить длинные названия: `Пластинчатая броня`, `Кольцо живучести`, `Древний амулет`.
+## P0 - Save Safety
 
-- [ ] Добавить визуальную иерархию предметов.
-  - [ ] Разделить типы предметов цветом/иконкой/маленькой пиксельной плашкой: оружие, броня, аксессуар.
-  - [ ] Сделать сильные предметы визуально отличимыми от базовых.
-  - [ ] Проверить, что полный рюкзак читается без чтения каждой строки.
+- [x] Проверять результат записи сейва в `GameState.save_current_game()`.
+- [x] Писать сейвы через временный файл и backup, чтобы снизить риск битого JSON при сбое записи.
+- [x] Добавить отдельную regression-проверку поврежденного/частично записанного сейва.
+- [ ] Продумать UX-сообщение, если сохранение не удалось.
 
-- [ ] Улучшить сетку инвентаря.
-  - [ ] Дать слотам больше воздуха или уменьшить текст внутри них.
-  - [ ] Убедиться, что правая колонка не упирается в край панели.
-  - [ ] Сохранить 16 слотов без прокрутки на 1600x900.
+## P0 - Reproducible Checks
 
-## P1 - переработать блок надетого снаряжения
+- [x] Сделать золото сундука частью seeded dungeon generation.
+- [x] Добавить проверку воспроизводимости dungeon generation для заданных seed.
+- [x] Зафиксировать seed в combat balance check, с возможностью передать seed аргументом.
+- [ ] Сделать enemy loot RNG воспроизводимым в отдельных balance/regression сценариях, если появятся flaky-проверки наград.
 
-- [ ] Сделать надетые предметы отдельными equipment cards.
-  - [ ] Оружие, броня и аксессуар должны выглядеть как три стабильных слота.
-  - [ ] Подписи слотов не должны конфликтовать с кнопками предметов.
-  - [ ] Пустой и заполненный slot state должны быть визуально разными.
+## P0 - Capture Review Tools
 
-- [ ] Улучшить стат-блок персонажа.
-  - [ ] Разделить базовые параметры и бонусы от экипировки.
-  - [ ] Сделать `HP`, `Атака`, `Защита` более сканируемыми.
-  - [ ] Проверить состояние со всем надетым шмотом и полным рюкзаком.
+- [x] `capture_visual_review.gd`: не падать на null viewport image в headless и не завершаться кодом 0 после ошибки.
+- [x] `capture_visual_review.gd`: валидировать battle и inventory PNG, а не только map/movement PNG.
+- [x] `capture_shell_review.gd`: добавить список обязательных shell PNG.
+- [x] `capture_shell_review.gd`: убрать зависание на ожидании render frame в headless.
+- [x] Документировать, что capture-скрипты чистят PNG в целевой директории.
 
-## P2 - добавить item detail/selection state
+## P1 - UI Responsiveness
 
-- [ ] Добавить выбранный предмет.
-  - [ ] При клике по предмету показывать его название, тип, слот и бонусы в detail-панели.
-  - [ ] Действия `Надеть`, `Снять`, `Выбросить` должны быть рядом с detail-панелью, а не только в popup menu.
-  - [ ] Popup menu можно оставить как быстрый fallback, если это проще.
+- [x] Убрать отрицательные позиции и слишком жесткие фиксированные ширины на узких viewport.
+- [x] Проверить `main_menu`, `character_select`, `load_menu`, `inventory_ui`, `death_screen`, `result_screen` на 960x540 и 1280x720.
+- [ ] Убрать или явно оформить placeholder-ноды в `.tscn`, которые сразу заменяются динамическими карточками.
+- [x] Удалить или вернуть в UX неиспользуемое popup-меню действий инвентаря.
 
-- [ ] Сделать hover/selection feedback.
-  - [ ] Выбранный предмет должен иметь понятную рамку.
-  - [ ] Надетый предмет должен быть отмечен как equipped.
-  - [ ] Нельзя полагаться только на текст.
+## P1 - Manual Gameplay Pass
 
-## P3 - сделать боевые панели персонажей вместо длинных HP-баров
+- [ ] Начать новую игру за base hero.
+- [ ] Начать новую игру за vampire.
+- [ ] Проверить бой, победу, смерть и удаление активного save slot.
+- [ ] Проверить normal и elite путь.
+- [ ] Проверить финальный сундук и экран результата.
+- [ ] Проверить inventory full cases: drop, chest reward, artifact room, shop purchase.
 
-- [ ] Заменить длинные верхние HP-бары на compact character plates.
-  - [ ] Левая plate: герой, HP, короткий бар.
-  - [ ] Правая plate: враг, HP, короткий бар.
-  - [ ] Освободить верхний центр экрана от тяжелых полос.
+## P2 - Architecture Cleanup
 
-- [ ] Улучшить визуальную иерархию боя.
-  - [ ] `Ход`, эффекты и скорость должны быть компактнее.
-  - [ ] Battle log не должен занимать слишком много внимания при хорошем состоянии боя.
-  - [ ] Проверить бой с крупными врагами и attack frames.
-
-## P4 - дополировать карту после UI-правок
-
-- [ ] Проверить левое пустое пространство карты.
-  - [ ] Если экран выглядит слишком пустым слева, добавить слабую декоративную темную рамку/vignette.
-  - [ ] Не возвращать ощущение серого или технического фона.
-  - [ ] HUD не должен быть единственным визуальным объектом слева.
-
-- [ ] Проверить читаемость объектов без текста.
-  - [ ] Сундук, фонтан, выход и артефакт должны быть понятны без `Осмотр`.
-  - [ ] Подсветка интерактива не должна выглядеть как debug selection.
-  - [ ] Враги не должны теряться в `crypt` и `moss`.
-
-## P5 - расширить визуальный capture/review
-
-- [x] Capture-check уже сохраняет `inventory_full_equipped.png`.
-
-- [ ] Добавить дополнительные UI-состояния в visual review.
-  - [ ] Инвентарь: пустой, полный, полный со всем надетым.
-  - [ ] Инвентарь: выбранный предмет и открытое action menu/detail.
-  - [ ] Бой: обычный враг, элитный враг, момент атаки/получения урона.
-
-- [ ] Обновить визуальный smoke-check под новые UI-состояния.
-  - [ ] Проверять, что capture-файлы создаются.
-  - [ ] Проверять, что full inventory не падает и не выходит за пределы окна.
-  - [ ] Оставить ручное дизайнерское ревью обязательным перед релизом.
-
-## Уже закрыто в предыдущих визуальных проходах
-
-- [x] Перерисованы монстры и боевые спрайты под стиль героя.
-- [x] Исправлены направления врагов в бою и на карте.
-- [x] Добавлены варианты пола, стен, edge/corner тайлы и декоративные пропсы.
-- [x] Убраны серые поля вокруг карты и настроен более плотный camera framing.
-- [x] Цветные маркеры заменены на объекты мира.
-- [x] Добавлены свет, виньетка, частицы и локальные огни на карте.
-- [x] Заменена синяя debug-подсветка интерактива на fantasy bracket highlight.
-- [x] Добавлена процедурная боевая арена с полом, силуэтами и grounding light.
-- [x] Боевые HP-бары приглушены и получили сегментные насечки.
-- [x] Добавлен `capture_visual_review.gd` для повторяемых кадров карты, боя и полного инвентаря.
+- [ ] Разгрузить `GameState`: вынести chest/fountain/special-room rewards в отдельный service.
+- [ ] Разделить `room.gd`: map generation/rendering, interactions, lighting/effects, HUD/choice panel.
+- [ ] Разделить `battle.gd`: battle flow, arena rendering, combat UI.
+- [ ] Постепенно заменить stringly typed dictionaries константами ключей или typed data helpers.
+- [ ] Вынести контент special rooms/shop rewards из `DungeonGenerator` в data/config слой.
 
 ## Регресс-проверки
 
@@ -103,19 +62,17 @@
 ```sh
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script scripts/check_scene_loads.gd
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script scripts/check_dungeon_generation.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script scripts/check_save_integrity.gd
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script scripts/check_combat_balance.gd
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script scripts/check_inventory_flow.gd
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script scripts/check_full_run_flow.gd
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script scripts/check_visual_map_states.gd
-/Applications/Godot.app/Contents/MacOS/Godot --path . --script scripts/capture_visual_review.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script scripts/check_ui_responsiveness.gd
 ```
 
-Текущее состояние проверок:
+Capture review остается ручной визуальной проверкой: в headless окружении capture-скрипты должны быстро завершаться с ошибкой, если viewport image недоступен.
 
-- `check_scene_loads.gd` проходит.
-- `check_dungeon_generation.gd` проходит.
-- `check_combat_balance.gd` проходит.
-- `check_inventory_flow.gd` проходит.
-- `check_full_run_flow.gd` проходит.
-- `check_visual_map_states.gd` проходит.
-- `capture_visual_review.gd` проходит и сохраняет `inventory_full_equipped.png`.
+```sh
+/Applications/Godot.app/Contents/MacOS/Godot --path . --script scripts/capture_visual_review.gd
+/Applications/Godot.app/Contents/MacOS/Godot --path . --script scripts/capture_shell_review.gd
+```

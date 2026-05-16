@@ -14,6 +14,8 @@ var arena_container: Node2D
 var arena_player_light: Sprite2D
 var arena_enemy_light: Sprite2D
 var battle_log_panel: Panel
+var player_plate_panel: Panel
+var enemy_plate_panel: Panel
 var player_hp_ticks: Array[ColorRect] = []
 var enemy_hp_ticks: Array[ColorRect] = []
 
@@ -78,30 +80,38 @@ func layout_battle_ui() -> void:
 	var viewport_size = get_viewport().get_visible_rect().size
 	$Background.size = viewport_size
 	var margin = 20.0
-	var bar_width = max(280.0, (viewport_size.x - margin * 3.0) * 0.5)
-	player_hp_label.position = Vector2(margin, 20.0)
-	player_hp_label.size = Vector2(bar_width, 30.0)
-	player_hp_bar.position = Vector2(margin, 55.0)
-	player_hp_bar.size = Vector2(bar_width, 20.0)
-	enemy_hp_label.position = Vector2(viewport_size.x - bar_width - margin, 20.0)
-	enemy_hp_label.size = Vector2(bar_width, 30.0)
-	enemy_hp_bar.position = Vector2(viewport_size.x - bar_width - margin, 55.0)
-	enemy_hp_bar.size = Vector2(bar_width, 20.0)
+	var plate_size = Vector2(318.0, 82.0)
+	var player_plate_position = Vector2(margin, 20.0)
+	var enemy_plate_position = Vector2(viewport_size.x - plate_size.x - margin, 20.0)
+	if player_plate_panel != null:
+		player_plate_panel.position = player_plate_position
+		player_plate_panel.size = plate_size
+	if enemy_plate_panel != null:
+		enemy_plate_panel.position = enemy_plate_position
+		enemy_plate_panel.size = plate_size
+	player_hp_label.position = player_plate_position + Vector2(14.0, 9.0)
+	player_hp_label.size = Vector2(plate_size.x - 28.0, 34.0)
+	player_hp_bar.position = player_plate_position + Vector2(14.0, 50.0)
+	player_hp_bar.size = Vector2(plate_size.x - 28.0, 14.0)
+	enemy_hp_label.position = enemy_plate_position + Vector2(14.0, 9.0)
+	enemy_hp_label.size = Vector2(plate_size.x - 28.0, 34.0)
+	enemy_hp_bar.position = enemy_plate_position + Vector2(14.0, 50.0)
+	enemy_hp_bar.size = Vector2(plate_size.x - 28.0, 14.0)
 	layout_hp_bar_ticks(player_hp_ticks, player_hp_bar.size)
 	layout_hp_bar_ticks(enemy_hp_ticks, enemy_hp_bar.size)
-	status_label.position = Vector2((viewport_size.x - 304.0) * 0.5, 94.0)
+	status_label.position = Vector2((viewport_size.x - 304.0) * 0.5, 24.0)
 	status_label.size = Vector2(304.0, 32.0)
-	effect_label.position = Vector2((viewport_size.x - 360.0) * 0.5, 126.0)
+	effect_label.position = Vector2((viewport_size.x - 360.0) * 0.5, 58.0)
 	effect_label.size = Vector2(360.0, 28.0)
-	speed_button.position = Vector2(viewport_size.x - 136.0, 92.0)
-	speed_button.size = Vector2(116.0, 36.0)
+	speed_button.position = Vector2((viewport_size.x - 116.0) * 0.5, 92.0)
+	speed_button.size = Vector2(116.0, 32.0)
 	player_sprite.position = Vector2(viewport_size.x * 0.32, viewport_size.y * 0.60)
 	enemy_sprite.position = Vector2(viewport_size.x * 0.70, viewport_size.y * 0.60)
 	player_sprite.scale = get_battle_sprite_scale(player_sprite, get_player_sprite_target_height())
 	enemy_sprite.scale = get_battle_sprite_scale(enemy_sprite, get_enemy_sprite_target_height())
 	layout_battle_arena(viewport_size)
-	log_label.position = Vector2(50.0, max(172.0, viewport_size.y - 170.0))
-	log_label.size = Vector2(max(360.0, viewport_size.x - 100.0), 140.0)
+	log_label.position = Vector2(46.0, max(172.0, viewport_size.y - 126.0))
+	log_label.size = Vector2(min(560.0, viewport_size.x - 92.0), 92.0)
 	if battle_log_panel != null:
 		battle_log_panel.position = log_label.position - Vector2(14.0, 12.0)
 		battle_log_panel.size = log_label.size + Vector2(28.0, 24.0)
@@ -111,6 +121,7 @@ func layout_battle_ui() -> void:
 func apply_battle_ui_style() -> void:
 	$Background.color = get_arena_backdrop_color()
 	$Background.z_index = -100
+	create_battle_plates()
 	create_battle_log_panel()
 	for label in [player_hp_label, enemy_hp_label, status_label, log_label]:
 		apply_battle_label_style(label, Color(0.90, 0.84, 0.74, 1.0))
@@ -125,6 +136,10 @@ func apply_battle_ui_style() -> void:
 	apply_battle_button_style(speed_button)
 	for control in [player_hp_label, player_hp_bar, enemy_hp_label, enemy_hp_bar, status_label, effect_label, speed_button, log_label, result_label]:
 		control.z_index = 20
+	player_hp_label.add_theme_font_size_override("font_size", 17)
+	enemy_hp_label.add_theme_font_size_override("font_size", 17)
+	status_label.add_theme_font_size_override("font_size", 18)
+	effect_label.add_theme_font_size_override("font_size", 16)
 
 func create_battle_arena() -> void:
 	if arena_container != null:
@@ -152,52 +167,100 @@ func layout_battle_arena(viewport_size: Vector2) -> void:
 		return
 	for child in arena_container.get_children():
 		if child != arena_player_light and child != arena_enemy_light:
+			arena_container.remove_child(child)
 			child.queue_free()
 
 	var variant = get_battle_environment_variant()
-	var far_wall = ColorRect.new()
-	far_wall.position = Vector2(0.0, viewport_size.y * 0.24)
-	far_wall.size = Vector2(viewport_size.x, viewport_size.y * 0.24)
-	far_wall.color = get_arena_wall_color(variant)
-	far_wall.z_index = -20
-	arena_container.add_child(far_wall)
+	var wall_top = viewport_size.y * 0.23
+	var wall_height = viewport_size.y * 0.32
+	var floor_top = viewport_size.y * 0.53
+	var floor_height = viewport_size.y * 0.29
+	add_arena_texture("BackWall", Vector2(0.0, wall_top), Vector2(viewport_size.x, wall_height), create_arena_wall_texture(variant), -24)
+	add_arena_texture("WallDepth", Vector2(0.0, wall_top + wall_height * 0.62), Vector2(viewport_size.x, wall_height * 0.42), create_horizontal_fade_texture(Color(0.0, 0.0, 0.0, 0.45), false), -21)
 
 	for index in range(7):
-		var column = ColorRect.new()
-		column.size = Vector2(34.0 + float(index % 2) * 18.0, viewport_size.y * 0.22)
-		column.position = Vector2(viewport_size.x * (0.10 + float(index) * 0.135), viewport_size.y * 0.27)
-		column.color = get_arena_column_color(variant)
-		column.z_index = -18
-		arena_container.add_child(column)
+		var column_width = 44.0 + float(index % 2) * 18.0
+		var column_height = viewport_size.y * (0.22 + float(index % 3) * 0.015)
+		var column_position = Vector2(viewport_size.x * (0.08 + float(index) * 0.14), wall_top + wall_height * 0.12)
+		add_arena_texture("Column%d" % index, column_position, Vector2(column_width, column_height), create_arena_column_texture(variant, index), -20)
 
-	var floor = ColorRect.new()
-	floor.position = Vector2(0.0, viewport_size.y * 0.55)
-	floor.size = Vector2(viewport_size.x, viewport_size.y * 0.24)
-	floor.color = get_arena_floor_color(variant)
-	floor.z_index = -16
-	arena_container.add_child(floor)
+	add_variant_wall_details(variant, viewport_size, wall_top, wall_height)
+	add_arena_texture("ArenaFloor", Vector2(0.0, floor_top), Vector2(viewport_size.x, floor_height), create_arena_floor_texture(variant), -18)
+	add_variant_floor_details(variant, viewport_size, floor_top, floor_height)
 
-	var tile_size = 64.0
-	for y in range(4):
-		for x in range(ceili(viewport_size.x / tile_size)):
-			var tile = ColorRect.new()
-			tile.position = Vector2(float(x) * tile_size, viewport_size.y * 0.55 + float(y) * 36.0)
-			tile.size = Vector2(tile_size - 2.0, 34.0)
-			tile.color = get_arena_tile_color(variant, x, y)
-			tile.z_index = -15
-			arena_container.add_child(tile)
-
-	var horizon = ColorRect.new()
-	horizon.position = Vector2(0.0, viewport_size.y * 0.535)
-	horizon.size = Vector2(viewport_size.x, 3.0)
-	horizon.color = get_arena_accent_color(variant)
-	horizon.z_index = -14
-	arena_container.add_child(horizon)
+	add_arena_texture("HorizonGlow", Vector2(0.0, floor_top - 22.0), Vector2(viewport_size.x, 44.0), create_horizontal_fade_texture(get_arena_accent_color(variant), true), -16)
+	add_arena_texture("MapLinkedFloorEdge", Vector2(0.0, floor_top - 4.0), Vector2(viewport_size.x, 18.0), create_horizontal_fade_texture(get_arena_edge_shadow_color(variant), false), -15)
+	add_arena_texture("RoomSightline", Vector2(0.0, floor_top + floor_height * 0.10), Vector2(viewport_size.x, 2.0), create_horizontal_line_texture(get_arena_room_line_color(variant)), -15)
+	add_arena_texture("ForegroundTileShade", Vector2(0.0, floor_top + floor_height * 0.72), Vector2(viewport_size.x, floor_height * 0.40), create_horizontal_fade_texture(Color(0.0, 0.0, 0.0, 0.34), false), -13)
+	add_arena_texture("ForegroundVignette", Vector2(0.0, 0.0), viewport_size, create_battle_vignette_texture(variant), -12)
 
 	arena_player_light.position = player_sprite.position + Vector2(0.0, get_player_sprite_target_height() * 0.42)
 	arena_enemy_light.position = enemy_sprite.position + Vector2(0.0, get_enemy_sprite_target_height() * 0.42)
 	arena_player_light.scale = Vector2(4.5, 1.25)
 	arena_enemy_light.scale = Vector2(4.2, 1.18)
+
+func add_arena_texture(node_name: String, position: Vector2, size: Vector2, texture: Texture2D, z_index: int) -> TextureRect:
+	var texture_rect = TextureRect.new()
+	texture_rect.name = node_name
+	texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_rect.position = position
+	texture_rect.size = size
+	texture_rect.texture = texture
+	texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	texture_rect.z_index = z_index
+	arena_container.add_child(texture_rect)
+	return texture_rect
+
+func add_arena_rect(node_name: String, position: Vector2, size: Vector2, color: Color, z_index: int) -> ColorRect:
+	var rect = ColorRect.new()
+	rect.name = node_name
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.position = position
+	rect.size = size
+	rect.color = color
+	rect.z_index = z_index
+	arena_container.add_child(rect)
+	return rect
+
+func add_variant_wall_details(variant: String, viewport_size: Vector2, wall_top: float, wall_height: float) -> void:
+	if variant == "ember":
+		for index in range(4):
+			var x = viewport_size.x * (0.16 + float(index) * 0.22)
+			add_arena_texture("EmberWallGlow%d" % index, Vector2(x - 80.0, wall_top + wall_height * 0.18), Vector2(160.0, wall_height * 0.72), create_soft_round_texture(Color(1.0, 0.20, 0.06, 0.20), 1.8), -19)
+	elif variant == "moss":
+		for index in range(6):
+			var x = viewport_size.x * (0.10 + float(index) * 0.15)
+			add_arena_rect("MossVine%d" % index, Vector2(x, wall_top + 14.0 + float(index % 2) * 26.0), Vector2(4.0, wall_height * 0.62), Color(0.06, 0.16, 0.08, 0.42), -17)
+			add_arena_rect("MossLeaf%d" % index, Vector2(x - 9.0, wall_top + wall_height * 0.40 + float(index % 3) * 14.0), Vector2(22.0, 5.0), Color(0.15, 0.30, 0.13, 0.46), -16)
+	else:
+		for index in range(5):
+			var x = viewport_size.x * (0.13 + float(index) * 0.18)
+			add_arena_rect("CryptRune%d" % index, Vector2(x, wall_top + wall_height * 0.34 + float(index % 2) * 22.0), Vector2(18.0, 3.0), Color(0.33, 0.38, 0.46, 0.34), -16)
+			add_arena_rect("CryptRuneVert%d" % index, Vector2(x + 8.0, wall_top + wall_height * 0.34 - 7.0 + float(index % 2) * 22.0), Vector2(3.0, 18.0), Color(0.25, 0.31, 0.42, 0.24), -16)
+
+func add_variant_floor_details(variant: String, viewport_size: Vector2, floor_top: float, floor_height: float) -> void:
+	if variant == "ember":
+		for index in range(8):
+			var start_x = viewport_size.x * (0.05 + float(index) * 0.12)
+			var y = floor_top + floor_height * (0.24 + float((index * 5) % 7) * 0.065)
+			add_arena_rect("LavaCrack%d" % index, Vector2(start_x, y), Vector2(76.0, 3.0), Color(1.0, 0.25, 0.05, 0.55), -14)
+			add_arena_rect("LavaCore%d" % index, Vector2(start_x + 18.0, y + 4.0), Vector2(44.0, 2.0), Color(1.0, 0.68, 0.18, 0.38), -13)
+	elif variant == "moss":
+		for index in range(10):
+			var x = viewport_size.x * (0.04 + float(index) * 0.095)
+			var y = floor_top + floor_height * (0.18 + float((index * 3) % 8) * 0.062)
+			add_arena_rect("MossPatch%d" % index, Vector2(x, y), Vector2(58.0, 8.0), Color(0.06, 0.16, 0.09, 0.46), -14)
+			if index % 3 == 0:
+				add_arena_texture("Puddle%d" % index, Vector2(x + 16.0, y + 10.0), Vector2(74.0, 20.0), create_soft_round_texture(Color(0.10, 0.22, 0.20, 0.34), 2.6), -13)
+	else:
+		for index in range(9):
+			var x = viewport_size.x * (0.05 + float(index) * 0.105)
+			var y = floor_top + floor_height * (0.22 + float((index * 4) % 7) * 0.070)
+			add_arena_rect("CryptFloorCrack%d" % index, Vector2(x, y), Vector2(54.0, 3.0), Color(0.10, 0.12, 0.15, 0.70), -14)
+			if index % 2 == 0:
+				add_arena_rect("CryptChip%d" % index, Vector2(x + 22.0, y + 12.0), Vector2(8.0, 5.0), Color(0.19, 0.20, 0.22, 0.36), -13)
 
 func get_battle_environment_variant() -> String:
 	var path_type = str(GameState.level_data.get("path", GameState.FLOOR_PATH_NORMAL))
@@ -247,10 +310,24 @@ func get_arena_tile_color(variant: String, x: int, y: int) -> Color:
 
 func get_arena_accent_color(variant: String) -> Color:
 	if variant == "ember":
-		return Color(0.75, 0.22, 0.08, 0.45)
+		return Color(0.68, 0.18, 0.06, 0.38)
 	if variant == "moss":
-		return Color(0.28, 0.55, 0.36, 0.36)
-	return Color(0.35, 0.42, 0.52, 0.32)
+		return Color(0.20, 0.38, 0.26, 0.32)
+	return Color(0.26, 0.32, 0.42, 0.28)
+
+func get_arena_edge_shadow_color(variant: String) -> Color:
+	if variant == "ember":
+		return Color(0.22, 0.055, 0.025, 0.50)
+	if variant == "moss":
+		return Color(0.018, 0.070, 0.052, 0.46)
+	return Color(0.020, 0.026, 0.040, 0.48)
+
+func get_arena_room_line_color(variant: String) -> Color:
+	if variant == "ember":
+		return Color(0.44, 0.16, 0.07, 0.48)
+	if variant == "moss":
+		return Color(0.12, 0.22, 0.14, 0.44)
+	return Color(0.15, 0.17, 0.22, 0.46)
 
 func get_arena_light_color() -> Color:
 	var variant = get_battle_environment_variant()
@@ -259,6 +336,126 @@ func get_arena_light_color() -> Color:
 	if variant == "moss":
 		return Color(0.42, 0.85, 0.58, 0.34)
 	return Color(0.70, 0.78, 0.92, 0.30)
+
+func create_arena_wall_texture(variant: String) -> ImageTexture:
+	var width = 320
+	var height = 108
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	var base = get_arena_wall_color(variant)
+	var mortar = get_arena_column_color(variant).darkened(0.18)
+	var accent = get_arena_accent_color(variant)
+	for y in range(height):
+		for x in range(width):
+			var row = int(y / 18)
+			var offset = 18 if row % 2 == 1 else 0
+			var brick_x = int((x + offset) / 36)
+			var joint = (x + offset) % 36 < 2 or y % 18 < 2
+			var grain = pseudo_noise(x, y, 17) * 0.040 - 0.020
+			var shade = float(y) / float(height - 1) * 0.20
+			var color = base.lightened(grain).darkened(shade)
+			if joint:
+				color = mortar
+			if (brick_x + row) % 7 == 0 and not joint:
+				color = color.lerp(accent, 0.08)
+			image.set_pixel(x, y, color)
+	return ImageTexture.create_from_image(image)
+
+func create_arena_column_texture(variant: String, column_index: int) -> ImageTexture:
+	var width = 32
+	var height = 128
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	var base = get_arena_column_color(variant)
+	var edge = get_arena_wall_color(variant).lightened(0.08)
+	for y in range(height):
+		for x in range(width):
+			var side = min(float(x), float(width - 1 - x)) / float(width)
+			var band = 0.045 if y % 28 < 3 else 0.0
+			var chip = 0.08 if int(pseudo_noise(x + column_index * 13, y, 29) * 18.0) == 0 else 0.0
+			var color = base.lightened(side * 0.18 + band + chip).darkened(float(y) / float(height) * 0.12)
+			if x < 2 or x > width - 4:
+				color = edge.darkened(0.18)
+			image.set_pixel(x, y, color)
+	return ImageTexture.create_from_image(image)
+
+func create_arena_floor_texture(variant: String) -> ImageTexture:
+	var width = 320
+	var height = 96
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	var base = get_arena_floor_color(variant)
+	var seam = base.darkened(0.34)
+	var accent = get_arena_accent_color(variant)
+	for y in range(height):
+		var row_height = 17 + int(float(y) / float(height) * 12.0)
+		for x in range(width):
+			var perspective_y = float(y) / float(height - 1)
+			var tile_w = 32 + int(perspective_y * 34.0)
+			var row = int(y / max(1, row_height))
+			var offset = int(float(row % 2) * float(tile_w) * 0.5)
+			var local_x = (x + offset) % tile_w
+			var joint = local_x < 2 or y % row_height < 2
+			var noise = pseudo_noise(x, y, 41) * 0.060 - 0.030
+			var color = base.lightened(noise).darkened((1.0 - perspective_y) * 0.10)
+			if joint:
+				color = seam
+			if int(pseudo_noise(x, y, 71) * 60.0) == 0:
+				color = color.lerp(accent, 0.12)
+			image.set_pixel(x, y, color)
+	return ImageTexture.create_from_image(image)
+
+func create_horizontal_fade_texture(color: Color, centered: bool) -> ImageTexture:
+	var width = 128
+	var height = 32
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	for y in range(height):
+		for x in range(width):
+			var vertical = float(y) / float(height - 1)
+			var amount = 1.0 - abs(vertical - 0.5) * 2.0 if centered else vertical
+			var alpha = color.a * pow(clamp(amount, 0.0, 1.0), 1.7)
+			image.set_pixel(x, y, Color(color.r, color.g, color.b, alpha))
+	return ImageTexture.create_from_image(image)
+
+func create_horizontal_line_texture(color: Color) -> ImageTexture:
+	var width = 128
+	var height = 2
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	for y in range(height):
+		for x in range(width):
+			var noise = pseudo_noise(x, y, 97) * 0.22
+			var alpha = color.a * (0.70 + noise)
+			image.set_pixel(x, y, Color(color.r, color.g, color.b, alpha))
+	return ImageTexture.create_from_image(image)
+
+func create_battle_vignette_texture(variant: String) -> ImageTexture:
+	var width = 320
+	var height = 180
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	var tint = Color(0.20, 0.06, 0.02, 1.0) if variant == "ember" else Color(0.04, 0.10, 0.07, 1.0) if variant == "moss" else Color(0.05, 0.06, 0.08, 1.0)
+	for y in range(height):
+		for x in range(width):
+			var uv = Vector2(float(x) / float(width - 1), float(y) / float(height - 1))
+			var distance = uv.distance_to(Vector2(0.50, 0.58))
+			var edge_alpha = smoothstep(0.34, 0.82, distance) * 0.58
+			var top_alpha = max(0.0, 1.0 - uv.y / 0.34) * 0.36
+			var bottom_alpha = max(0.0, (uv.y - 0.74) / 0.26) * 0.46
+			image.set_pixel(x, y, Color(tint.r * 0.25, tint.g * 0.25, tint.b * 0.25, max(edge_alpha, max(top_alpha, bottom_alpha))))
+	return ImageTexture.create_from_image(image)
+
+func create_soft_round_texture(color: Color, falloff: float) -> ImageTexture:
+	var width = 96
+	var height = 64
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	for y in range(height):
+		for x in range(width):
+			var uv = Vector2((float(x) / float(width - 1) - 0.5) * 2.0, (float(y) / float(height - 1) - 0.5) * 2.0)
+			var distance = sqrt(uv.x * uv.x + uv.y * uv.y * 1.8)
+			var alpha = pow(max(0.0, 1.0 - distance), falloff) * color.a
+			image.set_pixel(x, y, Color(color.r, color.g, color.b, alpha))
+	return ImageTexture.create_from_image(image)
+
+func pseudo_noise(x: int, y: int, seed: int) -> float:
+	var value = int(x * 73856093) ^ int(y * 19349663) ^ int(seed * 83492791)
+	value = abs(value)
+	return float(value % 1000) / 1000.0
 
 func create_ground_light_texture(light_color: Color) -> ImageTexture:
 	var width = 96
@@ -282,9 +479,25 @@ func create_battle_log_panel() -> void:
 	battle_log_panel = Panel.new()
 	battle_log_panel.name = "BattleLogPanel"
 	battle_log_panel.z_index = 10
-	battle_log_panel.add_theme_stylebox_override("panel", create_panel_style(Color(0.038, 0.032, 0.030, 0.88), Color(0.46, 0.34, 0.21, 1.0), 2, 4))
+	battle_log_panel.add_theme_stylebox_override("panel", create_panel_style(Color(0.038, 0.032, 0.030, 0.72), Color(0.34, 0.26, 0.18, 0.90), 1, 4))
 	add_child(battle_log_panel)
 	move_child(battle_log_panel, log_label.get_index())
+
+func create_battle_plates() -> void:
+	if player_plate_panel == null:
+		player_plate_panel = Panel.new()
+		player_plate_panel.name = "PlayerPlate"
+		player_plate_panel.z_index = 12
+		player_plate_panel.add_theme_stylebox_override("panel", create_panel_style(Color(0.042, 0.052, 0.038, 0.92), Color(0.42, 0.58, 0.32, 1.0), 2, 4))
+		add_child(player_plate_panel)
+		move_child(player_plate_panel, player_hp_label.get_index())
+	if enemy_plate_panel == null:
+		enemy_plate_panel = Panel.new()
+		enemy_plate_panel.name = "EnemyPlate"
+		enemy_plate_panel.z_index = 12
+		enemy_plate_panel.add_theme_stylebox_override("panel", create_panel_style(Color(0.060, 0.036, 0.034, 0.92), Color(0.58, 0.24, 0.20, 1.0), 2, 4))
+		add_child(enemy_plate_panel)
+		move_child(enemy_plate_panel, enemy_hp_label.get_index())
 
 func apply_battle_label_style(label: Label, color: Color) -> void:
 	if label == null:
@@ -455,7 +668,7 @@ func get_enemy_traits_text() -> String:
 
 func add_log(message: String):
 	battle_log.append(message)
-	if battle_log.size() > 6:
+	if battle_log.size() > 4:
 		battle_log.pop_front()
 	update_log_display()
 
@@ -463,8 +676,8 @@ func update_log_display():
 	log_label.text = "\n".join(battle_log)
 
 func update_ui():
-	player_hp_label.text = "%s HP: %d/%d" % [player_stats["name"], int(player_stats["hp"]), int(player_stats["max_hp"])]
-	enemy_hp_label.text = "%s HP: %d/%d" % [enemy_stats["name"], int(enemy_stats["hp"]), int(enemy_stats["max_hp"])]
+	player_hp_label.text = "%s   HP %d/%d" % [player_stats["name"], int(player_stats["hp"]), int(player_stats["max_hp"])]
+	enemy_hp_label.text = "%s   HP %d/%d" % [enemy_stats["name"], int(enemy_stats["hp"]), int(enemy_stats["max_hp"])]
 	
 	var player_hp_percent = float(player_stats["hp"]) / player_stats["max_hp"]
 	var enemy_hp_percent = float(enemy_stats["hp"]) / enemy_stats["max_hp"]
@@ -512,6 +725,8 @@ func end_battle(result: String):
 		if GameState.is_run_complete():
 			GameState.complete_run()
 			should_show_result_screen = true
+		elif GameState.is_final_floor_cleared():
+			add_log("Финальный этаж зачищен. Заберите награду из сундука.")
 	else:
 		result_label.text = "ПОРАЖЕНИЕ"
 		status_label.text = "Бой завершен"

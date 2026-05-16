@@ -8,6 +8,44 @@ The project uses semantic versioning while it is in prototype stage:
 
 ## [Unreleased]
 
+### Changed
+- Reworked the character inventory into compact item slots with type colors, stronger-item borders, separate equipment cards, split base/equipment stat text, and a selected item detail panel with direct actions.
+- Replaced long battle HP bars with compact left/right character plates and reduced battle log/status visual weight.
+- Added a subtle left-side map vignette behind the HUD so empty map space reads as intentional darkness rather than unused screen.
+- Extended visual review captures with empty inventory, full inventory, selected item detail, and battle hit-frame states.
+- Restyled the shell UI with a shared dark fantasy menu style, an atmospheric main menu backdrop, character cards, save cards, and confirmation dialogs for deleting or overwriting saves.
+- Added `capture_shell_review.gd` to save repeatable main-menu, character-select, load-menu, and save confirmation states.
+- Restyled the result screen as a dark fantasy victory scene with a framed run summary, equipment cards, hero artwork, and warm victory lighting.
+- Strengthened the main-menu title treatment with a short Russian subtitle and accent line so the first screen reads less like a placeholder.
+- Extended shell review captures with selected character cards, vampire overwrite confirmation, and normal/elite victory states with empty and full equipment.
+- Reworked the playable vampire sheet from the large hero art style with pale skin, crimson armor, a dark cape silhouette, and a red attack arc.
+- Added a vampire battle visual-review case and updated victory portraits so vampire clears show the vampire instead of the base hero.
+- Added hero backlight and floor shadow treatment to the main menu so the character reads as part of the scene instead of a separate sticker.
+- Pixel asset loading now falls back to the source PNG when an imported texture cache is stale after an asset size change.
+- Rebuilt battle arenas with procedural pixel wall/floor textures, stronger horizon lighting, deeper columns, foreground vignette, and clearer fighter grounding.
+- Differentiated crypt, moss, and ember battle arenas with runes/cracks, roots/puddles, and lava glow details instead of color-only variants.
+- Extended visual review captures with a moss slime battle case and fixed battle capture setup so forced enemy variants keep the correct name, stats, and traits.
+- Made shell review captures wait for the rendered frame before saving so UI screenshots no longer intermittently capture a black viewport.
+- Expanded visual review coverage to refresh captures from a clean directory and include all enemy battle sprites across crypt, moss, and ember arenas, plus player-attack and enemy-attack frames.
+- Added the death screen to shell review captures so full-path visual review covers both win and loss endings.
+- Restyled the death screen with the shared dark fantasy shell UI, a framed defeat summary, fallen-character artwork, and muted red defeat lighting.
+- Improved dungeon map readability with softer background props and stronger presence glows/shadows under the player, enemies, and important interactable objects.
+- Added generated pixel item icons to inventory slots, equipment cards, and the selected item detail panel, and changed the full inventory grid to three columns for cleaner spacing.
+- Extended visual review captures with a dense map-object case and additional death-screen states for the base hero and vampire.
+- Renamed and repackaged the main menu title treatment as `Тени подземелья`, with a cover-like arch silhouette, warmer title lighting, torch glows, and foreground fog.
+- Tuned battle arenas to sit closer to the dungeon maps by darkening foregrounds, adding map-like floor edge shadows, and reducing biome accent intensity.
+- Rechecked the shell UI captures as one visual system across main menu, character select, load/delete/overwrite dialogs, defeat, and victory screens.
+- Prototyped smoother grid movement on the dungeon map with short tweened steps, sprite bobbing, shadow/glow feedback, directional facing, and wall bump response.
+- Extended visual review captures with dungeon map movement and wall-bump frames for animation/art-direction review.
+- Added 4-frame PNG map actor sheets for the base hero and vampire across crypt, moss, and ember variants, with idle, two walk poses, and a bump pose plus a runtime fallback if a sheet is missing.
+- Added visible step phases during grid movement and a stronger squash/shadow bump response on blocked movement.
+- Added a distinct vampire map variant with a red cape silhouette so vampire runs no longer reuse the base hero map silhouette.
+- Improved map threat readability with enemy-specific threat anchors and stronger presence glows that stay weaker than interactive object highlights.
+- Muted special-room accent floor tiles, floor details, and background props so decorative map art reads less like clickable content.
+- Calmed dungeon floor rendering with quieter corridor tiles, larger room-floor texture patches, rarer special-room accents, and fewer background floor details.
+- Extended visual review captures with vampire map, enemy-in-dark-room, interactives-vs-decor, accent-tile, four-direction movement, and vampire movement review states.
+- Visual review capture now validates that the capture directory is clean before rendering and that required map/movement screenshots are created.
+
 ## [0.1.4] - 2026-05-14
 
 ### Changed

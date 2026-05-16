@@ -5,12 +5,14 @@ const CombatResolver = preload("res://scripts/combat_resolver.gd")
 
 const SIMULATIONS_PER_MATCHUP = 300
 const MAX_ROUNDS = 80
+const DEFAULT_RANDOM_SEED = 70415
 
 var failures: Array = []
 var game_state = GameStateScript.new()
 
 func _init() -> void:
-	randomize()
+	var random_seed = get_requested_seed()
+	seed(random_seed)
 	for character_id in GameStateScript.CHARACTER_DEFINITIONS.keys():
 		for floor_number in range(1, GameStateScript.MAX_FLOOR + 1):
 			validate_floor_matchups(str(character_id), floor_number, GameStateScript.FLOOR_PATH_NORMAL)
@@ -18,14 +20,20 @@ func _init() -> void:
 				validate_floor_matchups(str(character_id), floor_number, GameStateScript.FLOOR_PATH_ELITE)
 
 	if failures.is_empty():
-		print("Combat balance check passed.")
+		print("Combat balance check passed with seed %d." % random_seed)
 		game_state.free()
 		quit(0)
 	else:
 		for failure in failures:
 			push_error(failure)
-		game_state.free()
-		quit(1)
+			game_state.free()
+			quit(1)
+
+func get_requested_seed() -> int:
+	var user_args = OS.get_cmdline_user_args()
+	if not user_args.is_empty() and not str(user_args[0]).strip_edges().is_empty():
+		return int(str(user_args[0]).strip_edges())
+	return DEFAULT_RANDOM_SEED
 
 func validate_floor_matchups(character_id: String, floor_number: int, path_type: String) -> void:
 	for enemy_type in GameStateScript.DUNGEON_ENEMY_TYPES:

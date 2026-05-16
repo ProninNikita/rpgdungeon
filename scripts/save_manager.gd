@@ -16,7 +16,11 @@ static func load_save_slot(slot: int) -> Dictionary:
 	if file == null:
 		return {}
 
-	var parsed = JSON.parse_string(file.get_as_text())
+	var json = JSON.new()
+	if json.parse(file.get_as_text()) != OK:
+		return {}
+
+	var parsed = json.data
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return {}
 
@@ -28,11 +32,41 @@ static func write_save_slot(slot: int, save_data: Dictionary) -> bool:
 	if not ensure_save_dir_exists():
 		return false
 
-	var file = FileAccess.open(get_save_path(slot), FileAccess.WRITE)
+	var save_path = get_save_path(slot)
+	var temp_path = "%s.tmp" % save_path
+	var backup_path = "%s.bak" % save_path
+	var file = FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		return false
 
 	file.store_string(JSON.stringify(save_data, "\t"))
+	file.flush()
+	file = null
+
+	var temp_path_absolute = ProjectSettings.globalize_path(temp_path)
+	var save_path_absolute = ProjectSettings.globalize_path(save_path)
+	var backup_path_absolute = ProjectSettings.globalize_path(backup_path)
+	if not FileAccess.file_exists(temp_path):
+		return false
+
+	if FileAccess.file_exists(backup_path):
+		if DirAccess.remove_absolute(backup_path_absolute) != OK:
+			DirAccess.remove_absolute(temp_path_absolute)
+			return false
+
+	var had_existing_save = FileAccess.file_exists(save_path)
+	if had_existing_save and DirAccess.rename_absolute(save_path_absolute, backup_path_absolute) != OK:
+		DirAccess.remove_absolute(temp_path_absolute)
+		return false
+
+	if DirAccess.rename_absolute(temp_path_absolute, save_path_absolute) != OK:
+		if had_existing_save:
+			DirAccess.rename_absolute(backup_path_absolute, save_path_absolute)
+		DirAccess.remove_absolute(temp_path_absolute)
+		return false
+
+	if had_existing_save and FileAccess.file_exists(backup_path):
+		DirAccess.remove_absolute(backup_path_absolute)
 	return true
 
 static func delete_save_slot(slot: int) -> bool:

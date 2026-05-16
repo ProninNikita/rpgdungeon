@@ -5,6 +5,7 @@ const DungeonGenerator = preload("res://scripts/dungeon_generator.gd")
 const RUN_COUNT = 100
 
 var failures: Array = []
+var generated_count: int = 0
 
 func _init() -> void:
 	var requested_seeds = get_requested_seeds()
@@ -22,7 +23,7 @@ func _init() -> void:
 			validate_generated_level(0, 3, DungeonGenerator.FLOOR_PATH_ELITE, seed)
 
 	if failures.is_empty():
-		print("Dungeon generation check passed for %d generated levels." % (RUN_COUNT * 4))
+		print("Dungeon generation check passed for %d generated levels." % generated_count)
 		quit(0)
 	else:
 		for failure in failures:
@@ -45,6 +46,16 @@ func validate_generated_level(run_index: int, floor_number: int, path_type: Stri
 		Callable(self, "build_enemy_encounter_data"),
 		seed_override
 	)
+	generated_count += 1
+	if seed_override >= 0:
+		var repeated_level_data = DungeonGenerator.generate_level_data(
+			floor_number,
+			path_type,
+			Callable(self, "build_enemy_encounter_data"),
+			seed_override
+		)
+		if JSON.stringify(level_data) != JSON.stringify(repeated_level_data):
+			failures.append("seed %d floor %d path %s is not reproducible" % [seed_override, floor_number, path_type])
 	var floor_positions = get_floor_position_lookup(level_data.get("floor_tiles", []))
 	var occupied = {}
 	var context = "run %d seed %d floor %d path %s" % [

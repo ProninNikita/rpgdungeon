@@ -45,7 +45,7 @@ static func generate_level_data(
 
 	var rooms = generate_rooms(rng)
 	var exits = generate_exit_data(rooms, floor_number, path_type)
-	var chest = generate_chest_data(exits, floor_number, path_type, rooms)
+	var chest = generate_chest_data(exits, floor_number, path_type, rooms, rng)
 	var fountain = generate_fountain_data(rooms, floor_number)
 	var reserved_room_indexes = get_reserved_room_indexes(rooms, exits, chest, fountain)
 	var special_rooms = assign_special_rooms(rooms, reserved_room_indexes)
@@ -64,10 +64,10 @@ static func generate_level_data(
 
 	return {
 		"seed": level_seed,
-			"floor_number": floor_number,
-			"path": path_type,
-			"path_modifier": get_path_modifier_data(path_type),
-			"width": ROOM_WIDTH,
+		"floor_number": floor_number,
+		"path": path_type,
+		"path_modifier": get_path_modifier_data(path_type),
+		"width": ROOM_WIDTH,
 		"height": ROOM_HEIGHT,
 		"start_position": start_position,
 		"rooms": rooms,
@@ -311,7 +311,7 @@ static func build_exit_data(exit_id: String, label: String, path_type: String, t
 		"y": grid_position["y"]
 	}
 
-static func generate_chest_data(exits: Array, floor_number: int, path_type: String, rooms: Array = []) -> Dictionary:
+static func generate_chest_data(exits: Array, floor_number: int, path_type: String, rooms: Array = [], rng: RandomNumberGenerator = null) -> Dictionary:
 	if exits.is_empty() and (floor_number < MAX_FLOOR or rooms.is_empty()):
 		return {}
 
@@ -326,7 +326,7 @@ static func generate_chest_data(exits: Array, floor_number: int, path_type: Stri
 		"x": chest_position["x"],
 		"y": chest_position["y"],
 		"item_id": get_floor_chest_reward(floor_number, path_type),
-		"gold": get_floor_chest_gold(floor_number, path_type),
+		"gold": get_floor_chest_gold(floor_number, path_type, rng),
 		"is_opened": false
 	}
 
@@ -352,12 +352,14 @@ static func get_floor_chest_reward(floor_number: int, path_type: String) -> Stri
 		return "leather_chestpiece"
 	return "wooden_sword"
 
-static func get_floor_chest_gold(floor_number: int, path_type: String) -> int:
+static func get_floor_chest_gold(floor_number: int, path_type: String, rng: RandomNumberGenerator = null) -> int:
 	var min_gold = 15 + (floor_number - 1) * 5
 	var max_gold = 25 + (floor_number - 1) * 5
 	if path_type == FLOOR_PATH_ELITE:
 		min_gold += 10
 		max_gold += 15
+	if rng != null:
+		return rng.randi_range(min_gold, max_gold)
 	return randi_range(min_gold, max_gold)
 
 static func get_room_position_with_offset(room: Dictionary, offset: Vector2i) -> Dictionary:

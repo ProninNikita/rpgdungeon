@@ -130,6 +130,10 @@ func validate_exit_paths() -> void:
 func validate_victory_completion(active_slot: int) -> void:
 	game_state.active_save_slot = active_slot
 	prepare_cleared_floor(game_state.MAX_FLOOR, game_state.FLOOR_PATH_ELITE)
+	assert_true(not game_state.is_run_complete(), "final floor waits for final chest before completion")
+	var final_reward = game_state.open_level_chest()
+	assert_true(bool(final_reward.get(ResultData.KEY_OPENED, false)), "final floor chest opens before victory")
+	assert_true(game_state.is_run_complete(), "final chest enables completed run")
 	var summary = game_state.complete_run()
 	assert_true(not summary.is_empty(), "completed run creates a result summary")
 	assert_true(str(summary.get("character", "")).length() > 0, "result summary has character")

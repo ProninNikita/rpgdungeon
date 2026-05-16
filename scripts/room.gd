@@ -97,6 +97,8 @@ var local_light_positions: Array[Vector2] = []
 var interaction_highlight: ColorRect
 var interaction_highlight_material: ShaderMaterial
 var atmosphere_particles: CPUParticles2D
+var map_side_vignette: TextureRect
+var map_side_vignette_edge: ColorRect
 var interactable_hints: Dictionary = {}
 var message_sequence: int = 0
 var enemy_scene: PackedScene = load(ScenePaths.ENEMY)
@@ -108,6 +110,7 @@ var choice_buttons: Array = []
 var choice_cancel_button: Button
 var pending_choice_room_id: String = ""
 var pending_exit_id: String = ""
+var is_finishing_run: bool = false
 
 @onready var player = $Player
 @onready var camera = $Player/Camera2D
@@ -124,6 +127,7 @@ func _ready():
 	RenderingServer.set_default_clear_color(Color(0.010, 0.010, 0.013, 1.0))
 	inventory_ui.inventory_toggled.connect(_on_inventory_toggled)
 	create_choice_panel()
+	create_map_side_vignette()
 	layout_overlay_panels()
 	configure_map_camera()
 	GameState.ensure_level_data()
@@ -141,6 +145,13 @@ func _notification(what: int) -> void:
 
 func layout_overlay_panels() -> void:
 	var viewport_size = get_viewport().get_visible_rect().size
+	if map_side_vignette != null:
+		var side_width = min(360.0, max(286.0, viewport_size.x * 0.24))
+		map_side_vignette.position = Vector2.ZERO
+		map_side_vignette.size = Vector2(side_width, viewport_size.y)
+		if map_side_vignette_edge != null:
+			map_side_vignette_edge.position = Vector2(side_width - 1.0, 0.0)
+			map_side_vignette_edge.size = Vector2(1.0, viewport_size.y)
 	$UI/Hud.position = Vector2(16.0, 16.0)
 	$UI/Hud.size = Vector2(248.0, 106.0)
 	$UI/Hud/HudContent.position = Vector2(10.0, 8.0)
@@ -171,6 +182,36 @@ func apply_map_ui_style() -> void:
 	for button in choice_buttons:
 		apply_button_style(button)
 	apply_button_style(choice_cancel_button)
+
+func create_map_side_vignette() -> void:
+	if map_side_vignette != null:
+		return
+	map_side_vignette = TextureRect.new()
+	map_side_vignette.name = "MapSideVignette"
+	map_side_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_side_vignette.texture = create_side_vignette_texture()
+	map_side_vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	map_side_vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	map_side_vignette.z_index = -20
+	$UI.add_child(map_side_vignette)
+	$UI.move_child(map_side_vignette, 0)
+
+	map_side_vignette_edge = ColorRect.new()
+	map_side_vignette_edge.name = "MapSideVignetteEdge"
+	map_side_vignette_edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_side_vignette_edge.color = Color(0.24, 0.18, 0.11, 0.24)
+	map_side_vignette_edge.z_index = -19
+	$UI.add_child(map_side_vignette_edge)
+	$UI.move_child(map_side_vignette_edge, 1)
+
+func create_side_vignette_texture() -> ImageTexture:
+	var width = 192
+	var image = Image.create(width, 1, false, Image.FORMAT_RGBA8)
+	for x in range(width):
+		var t = float(x) / float(width - 1)
+		var alpha = pow(1.0 - t, 1.55) * 0.34
+		image.set_pixel(x, 0, Color(0.010, 0.008, 0.007, alpha))
+	return ImageTexture.create_from_image(image)
 
 func apply_panel_style(panel: Panel, background_color: Color, border_color: Color) -> void:
 	if panel == null:
@@ -351,33 +392,74 @@ func build_floors() -> void:
 		floor_sprite.position = Vector2(grid_pos * TILE_SIZE) + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 		floor_sprite.texture = get_floor_tile_texture(floor_data)
 		floor_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		floor_sprite.modulate = get_floor_sprite_modulate(floor_data)
 		floors_container.add_child(floor_sprite)
 
 func get_floor_tile_color(floor_data: Dictionary) -> Color:
 	var room_type = str(floor_data.get("room_type", ""))
 	if room_type == DungeonGenerator.ROOM_TYPE_ARTIFACT:
-		return Color(0.62, 0.46, 0.12, 1)
+		return Color(0.30, 0.25, 0.15, 1)
 	if room_type == DungeonGenerator.ROOM_TYPE_SHOP:
-		return Color(0.34, 0.21, 0.12, 1)
+		return Color(0.22, 0.17, 0.13, 1)
+	if is_corridor_floor(floor_data):
+		return Color(0.105, 0.108, 0.125, 1)
 	return Color(0.14, 0.14, 0.18, 1)
 
 func get_floor_tile_texture(floor_data: Dictionary) -> Texture2D:
 	var room_type = str(floor_data.get("room_type", ""))
 	var grid_pos = Vector2i(int(floor_data.get("x", 0)), int(floor_data.get("y", 0)))
-	if room_type == DungeonGenerator.ROOM_TYPE_ARTIFACT and should_use_room_accent_tile(grid_pos, 7):
+	if room_type == DungeonGenerator.ROOM_TYPE_ARTIFACT and should_use_special_floor_accent(floor_data, 10):
 		return PixelAssetPaths.map_texture("artifact_floor", map_variant)
-	if room_type == DungeonGenerator.ROOM_TYPE_SHOP and should_use_room_accent_tile(grid_pos, 6):
+	if room_type == DungeonGenerator.ROOM_TYPE_SHOP and should_use_special_floor_accent(floor_data, 9):
 		return PixelAssetPaths.map_texture("shop_floor", map_variant)
 	return PixelAssetPaths.map_texture(get_floor_variant_name(grid_pos), map_variant)
 
+func get_floor_sprite_modulate(floor_data: Dictionary) -> Color:
+	var room_type = str(floor_data.get("room_type", ""))
+	var grid_pos = Vector2i(int(floor_data.get("x", 0)), int(floor_data.get("y", 0)))
+	if room_type == DungeonGenerator.ROOM_TYPE_ARTIFACT and should_use_special_floor_accent(floor_data, 10):
+		return Color(0.58, 0.50, 0.38, 0.50)
+	if room_type == DungeonGenerator.ROOM_TYPE_SHOP and should_use_special_floor_accent(floor_data, 9):
+		return Color(0.54, 0.43, 0.36, 0.50)
+	if not room_type.is_empty():
+		return Color(0.78, 0.75, 0.68, 0.78)
+	if is_corridor_floor(floor_data):
+		return Color(0.70, 0.72, 0.74, 0.72)
+	return Color.WHITE
+
 func get_floor_variant_name(grid_pos: Vector2i) -> String:
-	var variant_index = get_tile_hash(grid_pos) % 4
+	var room = get_level_room_at_grid_pos(grid_pos)
+	if room.is_empty():
+		return get_quiet_corridor_floor_variant_name(grid_pos)
+	var local_x = grid_pos.x - int(room.get("x", 0))
+	var local_y = grid_pos.y - int(room.get("y", 0))
+	var patch_pos = Vector2i(floori(float(local_x) / 2.0), floori(float(local_y) / 2.0))
+	var variant_index = (get_room_hash(room) + patch_pos.x * 17 + patch_pos.y * 31) % 4
 	if variant_index == 0:
 		return "floor"
 	return "floor_%d" % variant_index
 
-func should_use_room_accent_tile(grid_pos: Vector2i, spacing: int) -> bool:
-	return get_tile_hash(grid_pos) % spacing == 0
+func get_quiet_corridor_floor_variant_name(grid_pos: Vector2i) -> String:
+	var variant_index = get_tile_hash(grid_pos + Vector2i(37, 11)) % 5
+	if variant_index <= 2:
+		return "floor"
+	return "floor_1"
+
+func should_use_special_floor_accent(floor_data: Dictionary, spacing: int) -> bool:
+	var grid_pos = Vector2i(int(floor_data.get("x", 0)), int(floor_data.get("y", 0)))
+	if is_reserved_map_position(grid_pos):
+		return false
+	var room = get_level_room_at_grid_pos(grid_pos)
+	if room.is_empty():
+		return false
+	var room_area = int(room.get("width", 0)) * int(room.get("height", 0))
+	if room_area < 16:
+		return false
+	return get_tile_hash(grid_pos + Vector2i(79, 31)) % spacing == 0
+
+func is_corridor_floor(floor_data: Dictionary) -> bool:
+	var grid_pos = Vector2i(int(floor_data.get("x", 0)), int(floor_data.get("y", 0)))
+	return get_level_room_at_grid_pos(grid_pos).is_empty()
 
 func build_floor_decorations() -> void:
 	for floor_data in GameState.level_data.get("floor_tiles", []):
@@ -390,18 +472,21 @@ func build_floor_decorations() -> void:
 		detail_sprite.position = Vector2(grid_pos * TILE_SIZE) + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 		detail_sprite.texture = PixelAssetPaths.map_texture(detail_name, map_variant)
 		detail_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		detail_sprite.modulate = Color(0.56, 0.55, 0.53, 0.46)
 		decorations_container.add_child(detail_sprite)
 
 func get_floor_detail_name(grid_pos: Vector2i, floor_data: Dictionary) -> String:
 	if str(floor_data.get("room_type", "")).is_empty() == false:
 		return ""
+	if is_corridor_floor(floor_data):
+		return ""
 	var hash_value = get_tile_hash(grid_pos)
 	var roll = hash_value % 100
-	if roll < 5:
+	if roll < 3:
 		return "detail_crack"
-	if roll < 9:
+	if roll < 6:
 		return "detail_rubble"
-	if roll < 11:
+	if roll < 7:
 		return "detail_accent"
 	return ""
 
@@ -418,6 +503,7 @@ func build_environment_props() -> void:
 		prop.position = Vector2(grid_pos * TILE_SIZE) + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 		prop.texture = PixelAssetPaths.map_texture(prop_name, map_variant)
 		prop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		prop.modulate = get_background_prop_modulate()
 		props_container.add_child(prop)
 		prop_positions[get_grid_key(grid_pos)] = true
 
@@ -496,6 +582,7 @@ func build_room_scene_props() -> void:
 		prop.position = Vector2(grid_pos * TILE_SIZE) + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 		prop.texture = PixelAssetPaths.map_texture(scene_name, map_variant)
 		prop.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		prop.modulate = get_background_prop_modulate()
 		props_container.add_child(prop)
 		prop_positions[get_grid_key(grid_pos)] = true
 
@@ -749,13 +836,69 @@ func create_special_room_marker(special_room: Dictionary) -> void:
 	)
 
 func create_map_marker(grid_pos: Vector2i, color: Color, marker_name: String) -> void:
+	add_map_object_anchor(grid_pos, get_object_anchor_color(marker_name, color))
 	var sprite = Sprite2D.new()
 	sprite.position = Vector2(grid_pos * TILE_SIZE) + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 	sprite.texture = PixelAssetPaths.map_texture(get_map_object_name(marker_name), map_variant)
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.z_index = 2
+	sprite.modulate = Color(1.14, 1.10, 1.02, 1.0)
 	interactables_container.add_child(sprite)
 	register_interactable_hint(grid_pos, marker_name, color)
 	register_local_light(grid_pos, marker_name)
+
+func add_map_object_anchor(grid_pos: Vector2i, color: Color) -> void:
+	var anchor = Sprite2D.new()
+	anchor.name = "ObjectAnchor"
+	anchor.position = Vector2(grid_pos * TILE_SIZE) + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0) + Vector2(0.0, 3.0)
+	anchor.texture = create_object_anchor_texture(color)
+	anchor.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	anchor.scale = Vector2(1.10, 0.82)
+	anchor.z_index = 0
+	interactables_container.add_child(anchor)
+
+func create_object_anchor_texture(color: Color) -> ImageTexture:
+	var width = 36
+	var height = 30
+	var image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	for y in range(height):
+		for x in range(width):
+			var uv = Vector2(
+				(float(x) / float(width - 1) - 0.5) * 2.0,
+				(float(y) / float(height - 1) - 0.5) * 2.0
+			)
+			var distance = sqrt(uv.x * uv.x + uv.y * uv.y * 2.3)
+			var glow_alpha = pow(clamp(1.0 - distance, 0.0, 1.0), 1.7) * color.a
+			var shadow_alpha = pow(clamp(1.0 - distance * 1.35, 0.0, 1.0), 1.3) * 0.28
+			var pixel_color = Color(0.0, 0.0, 0.0, shadow_alpha)
+			if glow_alpha > shadow_alpha:
+				pixel_color = Color(color.r, color.g, color.b, glow_alpha)
+			image.set_pixel(x, y, pixel_color)
+	return ImageTexture.create_from_image(image)
+
+func get_object_anchor_color(marker_name: String, fallback_color: Color) -> Color:
+	if marker_name == "marker_fountain":
+		return Color(0.48, 0.74, 0.86, 0.34)
+	if marker_name == "marker_exit":
+		return Color(0.80, 0.68, 0.34, 0.38)
+	if marker_name == "marker_elite":
+		return Color(0.94, 0.30, 0.18, 0.38)
+	if marker_name == "marker_chest":
+		return Color(0.82, 0.48, 0.18, 0.34)
+	if marker_name == "marker_shop":
+		return Color(0.72, 0.42, 0.20, 0.34)
+	if marker_name == "marker_artifact":
+		return Color(0.92, 0.70, 0.26, 0.38)
+	if marker_name == "marker_used":
+		return Color(0.36, 0.34, 0.32, 0.24)
+	return Color(fallback_color.r, fallback_color.g, fallback_color.b, 0.32)
+
+func get_background_prop_modulate() -> Color:
+	if map_variant == "ember":
+		return Color(0.60, 0.49, 0.43, 0.54)
+	if map_variant == "moss":
+		return Color(0.45, 0.58, 0.49, 0.50)
+	return Color(0.52, 0.54, 0.58, 0.52)
 
 func get_map_object_name(marker_name: String) -> String:
 	if marker_name == "marker_chest":
@@ -1123,6 +1266,8 @@ func handle_player_interaction(grid_pos: Vector2i) -> bool:
 			show_map_message(get_chest_reward_message(reward))
 			rebuild_interactables()
 			update_hud()
+			if GameState.is_run_complete():
+				call_deferred("finish_completed_run_after_reward")
 		return true
 
 	for exit_data in GameState.get_visible_exits():
@@ -1231,6 +1376,16 @@ func _on_choice_option_pressed(index: int) -> void:
 
 func _on_choice_cancel_pressed() -> void:
 	close_choice_panel()
+
+func finish_completed_run_after_reward() -> void:
+	if is_finishing_run:
+		return
+	is_finishing_run = true
+	if player != null:
+		player.input_locked = true
+	await get_tree().create_timer(1.4).timeout
+	GameState.complete_run()
+	get_tree().change_scene_to_file(ScenePaths.RESULT_SCREEN)
 
 func get_exit_consequence_text(exit_data: Dictionary) -> String:
 	var path_type = str(exit_data.get("path", GameState.FLOOR_PATH_NORMAL))

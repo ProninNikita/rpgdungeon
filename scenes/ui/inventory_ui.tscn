@@ -26,19 +26,19 @@ color = Color(0, 0, 0, 0.45)
 layout_mode = 0
 offset_left = 112.0
 offset_top = 72.0
-offset_right = 912.0
-offset_bottom = 696.0
+offset_right = 1152.0
+offset_bottom = 732.0
 
 [node name="Header" type="HBoxContainer" parent="Window"]
 layout_mode = 0
 offset_left = 20.0
 offset_top = 16.0
-offset_right = 780.0
+offset_right = 1020.0
 offset_bottom = 58.0
 theme_override_constants/separation = 12
 
 [node name="Title" type="Label" parent="Window/Header"]
-custom_minimum_size = Vector2(650, 42)
+custom_minimum_size = Vector2(890, 42)
 layout_mode = 2
 text = "Окно персонажа"
 theme_override_font_sizes/font_size = 26
@@ -53,8 +53,8 @@ text = "Закрыть"
 layout_mode = 0
 offset_left = 20.0
 offset_top = 72.0
-offset_right = 780.0
-offset_bottom = 604.0
+offset_right = 1020.0
+offset_bottom = 640.0
 
 [node name="Equipment" type="Control" parent="Window/Tabs"]
 layout_mode = 2
@@ -66,22 +66,22 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 14
 
 [node name="EquipmentPanel" type="Panel" parent="Window/Tabs/Equipment/Content"]
-custom_minimum_size = Vector2(300, 0)
+custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 
 [node name="EquipmentContent" type="VBoxContainer" parent="Window/Tabs/Equipment/Content/EquipmentPanel"]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 284.0
-offset_bottom = 500.0
-theme_override_constants/separation = 12
+offset_right = 264.0
+offset_bottom = 536.0
+theme_override_constants/separation = 10
 
 [node name="EquipmentTitle" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
-custom_minimum_size = Vector2(268, 32)
+custom_minimum_size = Vector2(248, 32)
 layout_mode = 2
 text = "Снаряжение"
 theme_override_font_sizes/font_size = 22
@@ -89,38 +89,38 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="CharacterLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
-custom_minimum_size = Vector2(268, 28)
+custom_minimum_size = Vector2(248, 28)
 layout_mode = 2
 text = "Персонаж: Герой"
 vertical_alignment = 1
 
 [node name="StatsTitle" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
-custom_minimum_size = Vector2(268, 28)
+custom_minimum_size = Vector2(248, 28)
 layout_mode = 2
 text = "Статы"
 theme_override_font_sizes/font_size = 18
 vertical_alignment = 1
 
 [node name="GoldLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
-custom_minimum_size = Vector2(268, 24)
+custom_minimum_size = Vector2(248, 24)
 layout_mode = 2
 text = "Золото: 0"
 vertical_alignment = 1
 
 [node name="HpLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
-custom_minimum_size = Vector2(268, 24)
+custom_minimum_size = Vector2(248, 42)
 layout_mode = 2
 text = "HP: 100/100"
 vertical_alignment = 1
 
 [node name="AttackLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
-custom_minimum_size = Vector2(268, 24)
+custom_minimum_size = Vector2(248, 42)
 layout_mode = 2
 text = "Атака: 10"
 vertical_alignment = 1
 
 [node name="DefenseLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent"]
-custom_minimum_size = Vector2(268, 24)
+custom_minimum_size = Vector2(248, 42)
 layout_mode = 2
 text = "Защита: 2"
 vertical_alignment = 1
@@ -129,7 +129,7 @@ vertical_alignment = 1
 layout_mode = 2
 columns = 2
 theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
+theme_override_constants/v_separation = 8
 
 [node name="WeaponLabel" type="Label" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent/EquipmentSlots"]
 custom_minimum_size = Vector2(104, 48)
@@ -138,7 +138,7 @@ text = "Оружие"
 vertical_alignment = 1
 
 [node name="WeaponSlot" type="Button" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent/EquipmentSlots"]
-custom_minimum_size = Vector2(138, 48)
+custom_minimum_size = Vector2(138, 52)
 layout_mode = 2
 disabled = true
 
@@ -149,7 +149,7 @@ text = "Броня"
 vertical_alignment = 1
 
 [node name="ArmorSlot" type="Button" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent/EquipmentSlots"]
-custom_minimum_size = Vector2(138, 48)
+custom_minimum_size = Vector2(138, 52)
 layout_mode = 2
 disabled = true
 
@@ -160,24 +160,24 @@ text = "Аксессуар"
 vertical_alignment = 1
 
 [node name="AccessorySlot" type="Button" parent="Window/Tabs/Equipment/Content/EquipmentPanel/EquipmentContent/EquipmentSlots"]
-custom_minimum_size = Vector2(138, 48)
+custom_minimum_size = Vector2(138, 52)
 layout_mode = 2
 disabled = true
 
 [node name="InventoryPanel" type="Panel" parent="Window/Tabs/Equipment/Content"]
-custom_minimum_size = Vector2(440, 0)
+custom_minimum_size = Vector2(410, 0)
 layout_mode = 2
 
 [node name="InventoryContent" type="VBoxContainer" parent="Window/Tabs/Equipment/Content/InventoryPanel"]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 424.0
-offset_bottom = 500.0
-theme_override_constants/separation = 12
+offset_right = 394.0
+offset_bottom = 536.0
+theme_override_constants/separation = 10
 
 [node name="InventoryTitle" type="Label" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent"]
-custom_minimum_size = Vector2(408, 32)
+custom_minimum_size = Vector2(378, 32)
 layout_mode = 2
 text = "Инвентарь"
 theme_override_font_sizes/font_size = 22
@@ -187,87 +187,155 @@ vertical_alignment = 1
 [node name="InventoryGrid" type="GridContainer" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent"]
 layout_mode = 2
 columns = 4
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
 
 [node name="Slot01" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot02" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot03" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot04" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot05" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot06" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot07" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot08" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot09" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot10" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot11" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot12" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot13" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot14" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot15" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
 disabled = true
 
 [node name="Slot16" type="Button" parent="Window/Tabs/Equipment/Content/InventoryPanel/InventoryContent/InventoryGrid"]
-custom_minimum_size = Vector2(88, 72)
+custom_minimum_size = Vector2(84, 64)
 layout_mode = 2
+disabled = true
+
+[node name="DetailPanel" type="Panel" parent="Window/Tabs/Equipment/Content"]
+custom_minimum_size = Vector2(270, 0)
+layout_mode = 2
+
+[node name="DetailContent" type="VBoxContainer" parent="Window/Tabs/Equipment/Content/DetailPanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 254.0
+offset_bottom = 536.0
+theme_override_constants/separation = 10
+
+[node name="DetailTitle" type="Label" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent"]
+custom_minimum_size = Vector2(238, 34)
+layout_mode = 2
+text = "Предмет"
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DetailTypeLabel" type="Label" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent"]
+custom_minimum_size = Vector2(238, 26)
+layout_mode = 2
+text = "Выберите слот"
+vertical_alignment = 1
+
+[node name="DetailSlotLabel" type="Label" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent"]
+custom_minimum_size = Vector2(238, 24)
+layout_mode = 2
+text = ""
+vertical_alignment = 1
+
+[node name="DetailBonusTitle" type="Label" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent"]
+custom_minimum_size = Vector2(238, 28)
+layout_mode = 2
+text = "Бонусы"
+theme_override_font_sizes/font_size = 16
+vertical_alignment = 1
+
+[node name="DetailBonusLabel" type="Label" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent"]
+custom_minimum_size = Vector2(238, 128)
+layout_mode = 2
+text = "Нет выбранного предмета"
+vertical_alignment = 0
+autowrap_mode = 2
+
+[node name="ActionButtons" type="VBoxContainer" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="EquipButton" type="Button" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent/ActionButtons"]
+custom_minimum_size = Vector2(238, 38)
+layout_mode = 2
+text = "Надеть"
+disabled = true
+
+[node name="UnequipButton" type="Button" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent/ActionButtons"]
+custom_minimum_size = Vector2(238, 38)
+layout_mode = 2
+text = "Снять"
+disabled = true
+
+[node name="DiscardButton" type="Button" parent="Window/Tabs/Equipment/Content/DetailPanel/DetailContent/ActionButtons"]
+custom_minimum_size = Vector2(238, 38)
+layout_mode = 2
+text = "Выбросить"
 disabled = true
 
 [node name="Passives" type="Control" parent="Window/Tabs"]
